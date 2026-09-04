@@ -1,0 +1,14 @@
+node_modules/
+.pnpm-store/
+lib/
+.client-build/
+*.tgz
+*.log
+.DS_Store
+.npmrc
+.dsh-vision-toolkit/
+.docs/
+AGENTS.md
+.idea/
+.codegraph/
+.opencode/

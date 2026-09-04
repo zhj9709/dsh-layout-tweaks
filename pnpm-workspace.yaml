@@ -1,0 +1,7 @@
+# Disable pnpm 11's default 24h minimum-release-age gate (only allows packages
+# published >24h ago); 0 means no age check for this project.
+minimumReleaseAge: 0
+# Flat (hoisted) node_modules — avoids Windows symlink/junction issues in
+# sandboxed or permission-restricted environments. Matches how DSH profiles
+# install their plugin bundles.
+nodeLinker: hoisted
