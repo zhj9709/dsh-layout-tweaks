@@ -1,6 +1,6 @@
 # dsh-conversation-style-tweaks
 
-> **Version requirement**: requires **DSH v0.1.2-rc.1 or newer**.
+> Dependency version: deepseek-harness v0.1.2-rc.1
 
 A [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) (DSH) web plugin that bundles a precise column-width control with a collection of opt-in CSS tweaks for the conversation view.
 

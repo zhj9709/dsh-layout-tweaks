@@ -1,6 +1,6 @@
 # dsh-conversation-style-tweaks
 
-> **版本要求**：需要 **DSH v0.1.2-rc.1 及以上**。
+> 依赖版本：deepseek-harness v0.1.2-rc.1
 
 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)（DSH）Web UI 插件：为对话视图提供一套可选的 CSS 调整项——精确的列宽控制，以及一系列小幅度布局修复。
 
