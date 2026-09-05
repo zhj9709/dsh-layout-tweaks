@@ -47,8 +47,8 @@ npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-conversation
 `add` 后面的包说明会**原样转发给 pnpm**，因此可以指定版本——npm 包用 `@版本号`，GitHub 源码用 `#tag`：
 
 ```bash
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-conversation-style-tweaks@0.0.1                    # 锁定 npm 版本
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-conversation-style-tweaks#v0.0.1     # 锁定 git tag
+npx -y @deepseek-ai/dsh plugin --profile web add dsh-conversation-style-tweaks@0.0.2                    # 锁定 npm 版本
+npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-conversation-style-tweaks#v0.0.2     # 锁定 git tag
 ```
 
 安装完成后**重启一次 `dsh web`**（bundle 插件在进程启动时扫描）。
