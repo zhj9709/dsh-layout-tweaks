@@ -21,4 +21,6 @@ export interface ResolvedConversationStyleTweaksConfig {
   stableTable: boolean
   /** Whether the stable-turn-rail tweak is enabled. */
   stableTurnRail: boolean
+  /** Whether the code-block-flush-top tweak is enabled. */
+  codeBlockFlushTop: boolean
 }

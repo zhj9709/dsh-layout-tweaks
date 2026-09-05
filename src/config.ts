@@ -59,6 +59,13 @@ export interface ConversationStyleTweaksConfig {
    * padded container.
    */
   stableTurnRail?: boolean
+  /**
+   * Remove the 16 px gap above highlighted code blocks so the highlighted
+   * box sits flush with the preceding paragraph, list item, or heading.
+   * The wrapper (`.md-code-block` in `CodeBlock.module.css`) ships with
+   * `margin: 16px 0`; this tweak overrides only the top edge.
+   */
+  codeBlockFlushTop?: boolean
 }
 
 // ── Column-width constants ───────────────────────────────────────────────
@@ -90,6 +97,8 @@ export const CONVERSATION_WIDTH_STORAGE_KEY = 'dsh.conversation.contentWidth'
 export const DEFAULT_STABLE_TABLE = true
 /** Default: every shipped tweak is on. */
 export const DEFAULT_STABLE_TURN_RAIL = true
+/** Default: every shipped tweak is on. */
+export const DEFAULT_CODE_BLOCK_FLUSH_TOP = true
 
 /** Configuration schema with documented defaults. */
 export const Config: Schema<ConversationStyleTweaksConfig> = z.object({
@@ -98,6 +107,7 @@ export const Config: Schema<ConversationStyleTweaksConfig> = z.object({
   sideMargin: z.number().min(MIN_SIDE_MARGIN).default(DEFAULT_SIDE_MARGIN),
   stableTable: z.boolean().default(DEFAULT_STABLE_TABLE),
   stableTurnRail: z.boolean().default(DEFAULT_STABLE_TURN_RAIL),
+  codeBlockFlushTop: z.boolean().default(DEFAULT_CODE_BLOCK_FLUSH_TOP),
 })
 
 /** Configuration after static validation, with every default materialized. */
@@ -112,6 +122,8 @@ export interface ResolvedConversationStyleTweaksConfig {
   stableTable: boolean
   /** Whether the stable-turn-rail tweak is enabled. */
   stableTurnRail: boolean
+  /** Whether the code-block-flush-top tweak is enabled. */
+  codeBlockFlushTop: boolean
 }
 
 /** Resolve a partial config into a fully defaulted value. */
@@ -122,6 +134,7 @@ export function resolveConfig(config: ConversationStyleTweaksConfig = {}): Resol
     sideMargin: config.sideMargin ?? DEFAULT_SIDE_MARGIN,
     stableTable: config.stableTable ?? DEFAULT_STABLE_TABLE,
     stableTurnRail: config.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
+    codeBlockFlushTop: config.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
   }
 }
 

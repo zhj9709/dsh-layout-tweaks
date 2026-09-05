@@ -31,6 +31,7 @@ import {
 import { TWEAKS, type TweakDescriptor } from './tweaks/registry.ts'
 import { injectStableTableStyles } from './tweaks/stable-table.ts'
 import { injectStableTurnRailStyles } from './tweaks/stable-turn-rail.ts'
+import { injectCodeBlockFlushTopStyles } from './tweaks/code-block-flush-top.ts'
 
 const NS = 'conversation-style-tweaks'
 const SETTINGS_ROUTE = '/_dsh/conversation-style-tweaks/settings'
@@ -39,6 +40,7 @@ const SETTINGS_ROUTE = '/_dsh/conversation-style-tweaks/settings'
 const TWEAK_INJECTORS: Record<string, () => () => void> = {
   'stable-table': injectStableTableStyles,
   'stable-turn-rail': injectStableTurnRailStyles,
+  'code-block-flush-top': injectCodeBlockFlushTopStyles,
 }
 
 interface TweaksValue {
@@ -54,6 +56,8 @@ interface TweaksValue {
   stableTable?: boolean
   /** Whether the stable-turn-rail tweak is enabled. */
   stableTurnRail?: boolean
+  /** Whether the code-block-flush-top tweak is enabled. */
+  codeBlockFlushTop?: boolean
 }
 
 interface ResolvedTweaks {
@@ -62,6 +66,7 @@ interface ResolvedTweaks {
   sideMargin: number
   stableTable: boolean
   stableTurnRail: boolean
+  codeBlockFlushTop: boolean
 }
 
 interface Snapshot {
@@ -101,6 +106,8 @@ const en = {
   'tweak.stableTable.description': 'Lock table layout on hover so surrounding content does not reflow ("text jumps when I hover a table").',
   'tweak.stableTurnRail.title': 'Stable turn-navigation rail',
   'tweak.stableTurnRail.description': 'Keep the turn-navigation rail at a stable position when scrolling up past the first message into the system prompt ("the rail jumps down by ~16 px when I scroll up after clicking the first turn").',
+  'tweak.codeBlockFlushTop.title': 'Flush code-block top',
+  'tweak.codeBlockFlushTop.description': 'Remove the 16 px gap above highlighted code blocks so the code sits flush with the preceding paragraph, list item, or heading.',
 } as const
 
 type LocaleKey = keyof typeof en
@@ -133,6 +140,8 @@ const zh: Record<LocaleKey, string> = {
   'tweak.stableTable.description': '锁住表格 hover 时的布局，避免周围内容发生回流（"鼠标移到表格上时下方文本会跳动"）。',
   'tweak.stableTurnRail.title': '轮次导航栏稳定',
   'tweak.stableTurnRail.description': '向上滚动到第一条消息上方的系统提示词区域时，让右侧轮次导航栏保持在原位（不再下移约 16 像素）。',
+  'tweak.codeBlockFlushTop.title': '代码块顶部贴齐',
+  'tweak.codeBlockFlushTop.description': '去掉高亮代码块上方的 16 px 空白，让代码块紧贴在前面的段落、列表项或标题下方。',
 }
 
 type Translate = (key: LocaleKey) => string
@@ -151,6 +160,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     sideMargin: resolveSideMargin(value?.sideMargin),
     stableTable: value?.stableTable ?? true,
     stableTurnRail: value?.stableTurnRail ?? true,
+    codeBlockFlushTop: value?.codeBlockFlushTop ?? true,
   }
 }
 

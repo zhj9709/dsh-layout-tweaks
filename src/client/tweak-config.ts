@@ -34,6 +34,8 @@ export const CONVERSATION_WIDTH_STORAGE_KEY = 'dsh.conversation.contentWidth'
 export const DEFAULT_STABLE_TABLE = true
 /** Default state of the stable-turn-rail tweak. */
 export const DEFAULT_STABLE_TURN_RAIL = true
+/** Default state of the code-block-flush-top tweak. */
+export const DEFAULT_CODE_BLOCK_FLUSH_TOP = true
 
 /**
  * Normalize a dialog width value (legacy strings included) to px.
@@ -68,5 +70,6 @@ export function resolveClientConfig(
     sideMargin: resolveSideMargin(value?.sideMargin),
     stableTable: value?.stableTable ?? DEFAULT_STABLE_TABLE,
     stableTurnRail: value?.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
+    codeBlockFlushTop: value?.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
   }
 }
