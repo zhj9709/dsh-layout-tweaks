@@ -23,4 +23,6 @@ export interface ResolvedConversationStyleTweaksConfig {
   stableTurnRail: boolean
   /** Whether the code-block-flush-top tweak is enabled. */
   codeBlockFlushTop: boolean
+  /** Whether the project-running-indicator tweak is enabled. */
+  projectRunningIndicator: boolean
 }

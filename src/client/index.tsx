@@ -32,15 +32,21 @@ import { TWEAKS, type TweakDescriptor } from './tweaks/registry.ts'
 import { injectStableTableStyles } from './tweaks/stable-table.ts'
 import { injectStableTurnRailStyles } from './tweaks/stable-turn-rail.ts'
 import { injectCodeBlockFlushTopStyles } from './tweaks/code-block-flush-top.ts'
+import { setupProjectRunningIndicator } from './tweaks/project-running-indicator.ts'
 
 const NS = 'conversation-style-tweaks'
 const SETTINGS_ROUTE = '/_dsh/conversation-style-tweaks/settings'
 
-/** Maps a tweak id to its style-injection function. Add new tweaks here. */
-const TWEAK_INJECTORS: Record<string, () => () => void> = {
-  'stable-table': injectStableTableStyles,
-  'stable-turn-rail': injectStableTurnRailStyles,
-  'code-block-flush-top': injectCodeBlockFlushTopStyles,
+/**
+ * Maps a tweak id to its mount function. Add new tweaks here. Pure-CSS
+ * injectors ignore the context; JS-level tweaks (DOM patching driven by app
+ * stores) receive it to read services like `sessions` / `workspaces`.
+ */
+const TWEAK_INJECTORS: Record<string, (ctx: ClientContext) => () => void> = {
+  'stable-table': () => injectStableTableStyles(),
+  'stable-turn-rail': () => injectStableTurnRailStyles(),
+  'code-block-flush-top': () => injectCodeBlockFlushTopStyles(),
+  'project-running-indicator': setupProjectRunningIndicator,
 }
 
 interface TweaksValue {
@@ -58,6 +64,8 @@ interface TweaksValue {
   stableTurnRail?: boolean
   /** Whether the code-block-flush-top tweak is enabled. */
   codeBlockFlushTop?: boolean
+  /** Whether the project-running-indicator tweak is enabled. */
+  projectRunningIndicator?: boolean
 }
 
 interface ResolvedTweaks {
@@ -67,6 +75,7 @@ interface ResolvedTweaks {
   stableTable: boolean
   stableTurnRail: boolean
   codeBlockFlushTop: boolean
+  projectRunningIndicator: boolean
 }
 
 interface Snapshot {
@@ -108,6 +117,8 @@ const en = {
   'tweak.stableTurnRail.description': 'Keep the turn-navigation rail at a stable position when scrolling up past the first message into the system prompt ("the rail jumps down by ~16 px when I scroll up after clicking the first turn").',
   'tweak.codeBlockFlushTop.title': 'Flush code-block top',
   'tweak.codeBlockFlushTop.description': 'Remove the 16 px gap above highlighted code blocks so the code sits flush with the preceding paragraph, list item, or heading.',
+  'tweak.projectRunningIndicator.title': 'Project running indicator',
+  'tweak.projectRunningIndicator.description': 'Show the conversation title\'s animated running dot on the right side of each project directory in the sidebar, so a running conversation stays visible even when the directory is collapsed.',
 } as const
 
 type LocaleKey = keyof typeof en
@@ -142,6 +153,8 @@ const zh: Record<LocaleKey, string> = {
   'tweak.stableTurnRail.description': '向上滚动到第一条消息上方的系统提示词区域时，让右侧轮次导航栏保持在原位（不再下移约 16 像素）。',
   'tweak.codeBlockFlushTop.title': '代码块顶部贴齐',
   'tweak.codeBlockFlushTop.description': '去掉高亮代码块上方的 16 px 空白，让代码块紧贴在前面的段落、列表项或标题下方。',
+  'tweak.projectRunningIndicator.title': '项目目录运行指示',
+  'tweak.projectRunningIndicator.description': '在侧边栏项目目录右侧显示与对话标题一致的运行动画圆点，目录收起时也能一眼看出里面有对话正在进行。',
 }
 
 type Translate = (key: LocaleKey) => string
@@ -161,6 +174,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     stableTable: value?.stableTable ?? true,
     stableTurnRail: value?.stableTurnRail ?? true,
     codeBlockFlushTop: value?.codeBlockFlushTop ?? true,
+    projectRunningIndicator: value?.projectRunningIndicator ?? true,
   }
 }
 
@@ -209,14 +223,15 @@ const BASE_CSS = `
 
 function installBaseStyles(): () => void {
   const id = 'dsh-conversation-style-tweaks-base'
-  const existing = document.querySelector<HTMLStyleElement>(`style[data-plugin-css="${id}"]`)
-  if (existing !== null) return () => {}
-  const style = document.createElement('style')
-  style.dataset.plugin = 'dsh-conversation-style-tweaks'
-  style.dataset.pluginCss = id
-  style.textContent = BASE_CSS
-  document.head.appendChild(style)
-  return () => { style.remove() }
+  let style = document.querySelector<HTMLStyleElement>(`style[data-plugin-css="${id}"]`)
+  if (style === null) {
+    style = document.createElement('style')
+    style.dataset.plugin = 'dsh-conversation-style-tweaks'
+    style.dataset.pluginCss = id
+    style.textContent = BASE_CSS
+    document.head.appendChild(style)
+  }
+  return () => { style?.remove() }
 }
 
 /**
@@ -314,8 +329,8 @@ export class SettingsClient {
   }
 }
 
-/** Required client services: slots (settings.section) and locale. */
-export const inject = ['slots', 'locale']
+/** Required client services: slots (settings.section), locale, and the app stores the JS-level tweaks read. */
+export const inject = ['slots', 'locale', 'sessions', 'workspaces']
 
 /**
  * Hover/focus hint: a small ⓘ next to the field label; the hint text renders
@@ -541,7 +556,29 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
   )
 }
 
+/**
+ * Sanity-check that every tweak in the registry has matching `titleKey` /
+ * `descriptionKey` strings in both `en` and `zh`. Catches "added a tweak
+ * but forgot the i18n strings" at apply time instead of as an untranslated
+ * label visible to users.
+ */
+function assertTweakI18nComplete(): void {
+  const missing = (locale: 'en' | 'zh', table: Record<LocaleKey, string>): string[] => {
+    const out: string[] = []
+    for (const tweak of TWEAKS) {
+      if (table[tweak.titleKey as LocaleKey] === undefined) out.push(`${locale}:${tweak.titleKey}`)
+      if (table[tweak.descriptionKey as LocaleKey] === undefined) out.push(`${locale}:${tweak.descriptionKey}`)
+    }
+    return out
+  }
+  const problems = [...missing('en', en), ...missing('zh', zh)]
+  if (problems.length > 0) {
+    console.error('[dsh-conversation-style-tweaks] missing i18n keys:', problems)
+  }
+}
+
 export function apply(ctx: ClientContext): void {
+  assertTweakI18nComplete()
   ctx.effect(installBaseStyles, 'dsh-conversation-style-tweaks: base styles')
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'dsh-conversation-style-tweaks: locale')
   const t = ctx.locale.bind(NS)
@@ -595,7 +632,7 @@ export function apply(ctx: ClientContext): void {
         if (!enabled) continue
         const injector = TWEAK_INJECTORS[tweak.id]
         if (injector === undefined) continue
-        cleanups.push(injector())
+        cleanups.push(injector(ctx))
       }
     }
     sync()

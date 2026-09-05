@@ -15,6 +15,9 @@
 ### 调整项
 
 - **表格布局稳定（默认开启）**：锁住 markdown 表格 hover 时的布局，避免周围内容发生回流（"鼠标移到表格上时下方文本会跳动"）。
+- **轮次导航栏稳定（默认开启）**：向上滚动到第一条消息上方的系统提示词区域时，让右侧轮次导航栏保持在原位（不再下移约 16 像素）。
+- **代码块顶部贴齐（默认开启）**：去掉高亮代码块上方的 16 px 空白，让代码块紧贴在前面的段落、列表项或标题下方。
+- **项目目录运行指示（默认开启）**：在侧边栏项目目录右侧显示与对话标题一致的运行动画圆点，目录收起时也能一眼看出里面有对话正在进行。
 
 ```yaml
 conversation-style-tweaks:
@@ -23,7 +26,10 @@ conversation-style-tweaks:
   dialogWidth: 748       # 600–1600 px
   sideMargin: 50         # ≥ 32 px
   # 调整项
-  stableTable: true      # 默认 true；false 则关闭
+  stableTable: true             # 默认 true；false 则关闭
+  stableTurnRail: true          # 默认 true；false 则关闭
+  codeBlockFlushTop: true       # 默认 true；false 则关闭
+  projectRunningIndicator: true # 默认 true；false 则关闭
 ```
 
 设置入口：**设置 → 对话样式**。
@@ -65,9 +71,10 @@ npx -y @deepseek-ai/dsh plugin --profile web add .        # 从本目录作为 b
 ## 工作原理
 
 - **服务端**（`src/index.ts`）：注册 `conversation-style-tweaks` 设置命名空间，并挂载同源路由 `/_dsh/conversation-style-tweaks/settings`。
-- **浏览器端**（`src/client/index.tsx`）：读写该路由、渲染设置页，并根据每个开关的状态通过运行时 `<style>` 元素实时注入对应的 CSS。
+- **浏览器端**（`src/client/index.tsx`）：读写该路由、渲染设置页，并根据每个开关的状态实时挂载 / 卸载对应的调整项（纯 CSS 调整项注入运行时 `<style>` 元素；JS 级调整项还会读写应用自身的状态 store 并修补 DOM）。
 - **列宽样式引擎**（`src/client/conversation-width.ts`）：写入 `--dsh-chat-user-width` CSS 变量，并在插件接管列宽时隐藏原生 `[data-width-handle]` 拖拽手柄；宽度值同时镜像到原生手柄读取的 localStorage 槽位，开关切换时无缝往返。
 - **调整项注册表**（`src/client/tweaks/registry.ts`）：每个调整项的元数据（id、settings 字段名、默认值、i18n 键）集中登记；新增调整项只需在注册表里加一条，并在 `src/client/tweaks/` 下新增一个注入文件。
+- **项目目录运行指示**（`src/client/tweaks/project-running-indicator.ts`）：从 `ctx.get('sessions')` / `ctx.get('workspaces')` 读取会话运行状态与目录归属，用 MutationObserver 在项目目录头行（`role="treeitem"[aria-expanded]`，稳定手写属性）内挂载应用自身的 `StateDot`（复用 `@deepseek-ai/dsh-client-ui-primitives` 的同一份模块，动画 keyframes 与样式 token 与对话标题处完全一致）。
 
 ## 致谢
 

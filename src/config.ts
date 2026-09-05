@@ -66,6 +66,15 @@ export interface ConversationStyleTweaksConfig {
    * `margin: 16px 0`; this tweak overrides only the top edge.
    */
   codeBlockFlushTop?: boolean
+  /**
+   * Show the conversation title's animated running dot on the right side of
+   * every project directory header row in the sidebar, so a running
+   * conversation stays visible even when its group is collapsed. The dot is
+   * DSH's own `StateDot` (shared instance) driven by the app's
+   * sessions/workspaces stores — pendingInteraction (amber) needs the
+   * ui-session service face and is out of scope; only ongoing shows.
+   */
+  projectRunningIndicator?: boolean
 }
 
 // ── Column-width constants ───────────────────────────────────────────────
@@ -99,6 +108,8 @@ export const DEFAULT_STABLE_TABLE = true
 export const DEFAULT_STABLE_TURN_RAIL = true
 /** Default: every shipped tweak is on. */
 export const DEFAULT_CODE_BLOCK_FLUSH_TOP = true
+/** Default: every shipped tweak is on. */
+export const DEFAULT_PROJECT_RUNNING_INDICATOR = true
 
 /** Configuration schema with documented defaults. */
 export const Config: Schema<ConversationStyleTweaksConfig> = z.object({
@@ -108,6 +119,7 @@ export const Config: Schema<ConversationStyleTweaksConfig> = z.object({
   stableTable: z.boolean().default(DEFAULT_STABLE_TABLE),
   stableTurnRail: z.boolean().default(DEFAULT_STABLE_TURN_RAIL),
   codeBlockFlushTop: z.boolean().default(DEFAULT_CODE_BLOCK_FLUSH_TOP),
+  projectRunningIndicator: z.boolean().default(DEFAULT_PROJECT_RUNNING_INDICATOR),
 })
 
 /** Configuration after static validation, with every default materialized. */
@@ -124,6 +136,8 @@ export interface ResolvedConversationStyleTweaksConfig {
   stableTurnRail: boolean
   /** Whether the code-block-flush-top tweak is enabled. */
   codeBlockFlushTop: boolean
+  /** Whether the project-running-indicator tweak is enabled. */
+  projectRunningIndicator: boolean
 }
 
 /** Resolve a partial config into a fully defaulted value. */
@@ -135,6 +149,7 @@ export function resolveConfig(config: ConversationStyleTweaksConfig = {}): Resol
     stableTable: config.stableTable ?? DEFAULT_STABLE_TABLE,
     stableTurnRail: config.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
     codeBlockFlushTop: config.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
+    projectRunningIndicator: config.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
   }
 }
 

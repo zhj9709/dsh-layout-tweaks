@@ -42,4 +42,11 @@ export const TWEAKS: readonly TweakDescriptor[] = [
     titleKey: 'tweak.codeBlockFlushTop.title',
     descriptionKey: 'tweak.codeBlockFlushTop.description',
   },
+  {
+    id: 'project-running-indicator',
+    settingKey: 'projectRunningIndicator',
+    defaultEnabled: true,
+    titleKey: 'tweak.projectRunningIndicator.title',
+    descriptionKey: 'tweak.projectRunningIndicator.description',
+  },
 ]

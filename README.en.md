@@ -15,15 +15,21 @@ A [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) (DSH)
 ### Tweaks
 
 - **Stable table layout (default on)** — locks table layout on hover so surrounding content does not reflow ("text jumps when I hover a table").
+- **Stable turn-navigation rail (default on)** — keeps the turn-navigation rail at a stable position when scrolling up past the first message into the system prompt area (no longer drops by ~16 px).
+- **Flush code-block top (default on)** — removes the 16 px gap above highlighted code blocks so the code sits flush with the preceding paragraph, list item, or heading.
+- **Project running indicator (default on)** — shows the conversation title's animated running dot on the right side of each project directory in the sidebar, so a running conversation stays visible even when its group is collapsed.
 
 ```yaml
 conversation-style-tweaks:
   # Layout
-  usePluginWidth: true   # default true; false hands the column back to native handles
-  dialogWidth: 748       # 600–1600 px
-  sideMargin: 50         # ≥ 32 px
+  usePluginWidth: true             # default true; false hands the column back to native handles
+  dialogWidth: 748                 # 600–1600 px
+  sideMargin: 50                   # ≥ 32 px
   # Tweaks
-  stableTable: true      # default true; false disables the tweak
+  stableTable: true                # default true; false disables the tweak
+  stableTurnRail: true             # default true; false disables the tweak
+  codeBlockFlushTop: true          # default true; false disables the tweak
+  projectRunningIndicator: true    # default true; false disables the tweak
 ```
 
 Settings entry: **Settings → Conversation style**.
@@ -66,9 +72,10 @@ npx -y @deepseek-ai/dsh plugin --profile web add .        # bundle install from 
 ## How it works
 
 - **Server** (`src/index.ts`) registers the `conversation-style-tweaks` settings namespace and mounts a same-origin route (`/_dsh/conversation-style-tweaks/settings`).
-- **Browser** (`src/client/index.tsx`) reads/writes that route, renders the Settings section, and injects the corresponding CSS live via runtime `<style>` elements based on each toggle's state.
+- **Browser** (`src/client/index.tsx`) reads/writes that route, renders the Settings section, and mounts / unmounts each tweak live based on its toggle (pure-CSS tweaks inject runtime `<style>` elements; JS-level tweaks also read the app's own state stores and patch the DOM).
 - **Column-width engine** (`src/client/conversation-width.ts`) writes the `--dsh-chat-user-width` CSS variable and hides DSH's native `[data-width-handle]` drag strips while plugin width control is on; the chosen px is also mirrored into the localStorage slot the native handles read, so flipping the switch round-trips cleanly.
 - **Tweak registry** (`src/client/tweaks/registry.ts`) centralises each tweak's metadata (id, settings field name, default value, i18n keys); adding a new tweak means appending one entry here and dropping a new injector file under `src/client/tweaks/`.
+- **Project running indicator** (`src/client/tweaks/project-running-indicator.ts`) reads session running state and directory membership from `ctx.get('sessions')` / `ctx.get('workspaces')`, and uses a MutationObserver to mount the app's own `StateDot` (re-using `@deepseek-ai/dsh-client-ui-primitives` so the animation keyframes and style tokens are byte-identical to the conversation title's dot) inside each project directory header row (`role="treeitem"[aria-expanded]`, a stable hand-written attribute).
 
 ## Acknowledgements
 

@@ -36,6 +36,8 @@ export const DEFAULT_STABLE_TABLE = true
 export const DEFAULT_STABLE_TURN_RAIL = true
 /** Default state of the code-block-flush-top tweak. */
 export const DEFAULT_CODE_BLOCK_FLUSH_TOP = true
+/** Default state of the project-running-indicator tweak. */
+export const DEFAULT_PROJECT_RUNNING_INDICATOR = true
 
 /**
  * Normalize a dialog width value (legacy strings included) to px.
@@ -71,5 +73,6 @@ export function resolveClientConfig(
     stableTable: value?.stableTable ?? DEFAULT_STABLE_TABLE,
     stableTurnRail: value?.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
     codeBlockFlushTop: value?.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
+    projectRunningIndicator: value?.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
   }
 }
