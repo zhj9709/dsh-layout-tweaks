@@ -18,6 +18,7 @@
 - **轮次导航栏稳定（默认开启）**：向上滚动到第一条消息上方的系统提示词区域时，让右侧轮次导航栏保持在原位（不再下移约 16 像素）。
 - **代码块顶部贴齐（默认开启）**：去掉高亮代码块上方的 16 px 空白，让代码块紧贴在前面的段落、列表项或标题下方。
 - **项目目录运行指示（默认开启）**：在侧边栏项目目录右侧显示与对话标题一致的运行动画圆点，目录收起时也能一眼看出里面有对话正在进行。
+- **定位当前会话（默认开启）**：在侧边栏"工作区"段头部的搜索按钮左边新增一个定位按钮；点击后自动展开当前会话所属的工作区目录（包括"展开其余 x 个会话"的折叠层），将该会话滚动到侧边栏视口中央。无当前会话时按钮禁用并提示"请先打开一个会话"。
 
 ```yaml
 conversation-style-tweaks:
@@ -30,6 +31,7 @@ conversation-style-tweaks:
   stableTurnRail: true          # 默认 true；false 则关闭
   codeBlockFlushTop: true       # 默认 true；false 则关闭
   projectRunningIndicator: true # 默认 true；false 则关闭
+  locateCurrentSession: true    # 默认 true；false 则隐藏侧边栏定位按钮
 ```
 
 设置入口：**设置 → 对话样式**。
@@ -55,6 +57,8 @@ npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-conversation
 
 ## 开发
 
+### 构建
+
 ```bash
 pnpm install
 pnpm build          # tsc（服务端）+ tsc（客户端）+ 打包 lib/client.js
@@ -68,6 +72,26 @@ npx -y @deepseek-ai/dsh web --patch ./cordis.patch.yml   # 开发覆盖层
 npx -y @deepseek-ai/dsh plugin --profile web add .        # 从本目录作为 bundle 安装
 ```
 
+### 热重载（免安装）
+
+构建产物只有客户端插件（`lib/client.js`）需要被 DSH 运行时加载。每次修改代码后：
+
+1. **构建**：
+   ```bash
+   pnpm build
+   ```
+
+2. **复制到 profile 目录**：
+   ```bash
+   cp lib/client.js ~/.dsh/profiles/web/node_modules/dsh-conversation-style-tweaks/lib/client.js
+   ```
+
+3. **DSH 的 client-plugin HMR receiver** 会检测文件变更并自动重新加载插件，无需重新安装。
+
+> 注意：有时 GUI 进程会缓存旧 bundle，表现为改动未生效。此时需要重启 `dsh web` 进程。
+
+只有客户端插件（`client.js`）支持热重载。修改 `apps/web` shell 或普通 package 后仍需重新构建 Web 产物并刷新页面。
+
 ## 工作原理
 
 - **服务端**（`src/index.ts`）：注册 `conversation-style-tweaks` 设置命名空间，并挂载同源路由 `/_dsh/conversation-style-tweaks/settings`。
@@ -75,6 +99,7 @@ npx -y @deepseek-ai/dsh plugin --profile web add .        # 从本目录作为 b
 - **列宽样式引擎**（`src/client/conversation-width.ts`）：写入 `--dsh-chat-user-width` CSS 变量，并在插件接管列宽时隐藏原生 `[data-width-handle]` 拖拽手柄；宽度值同时镜像到原生手柄读取的 localStorage 槽位，开关切换时无缝往返。
 - **调整项注册表**（`src/client/tweaks/registry.ts`）：每个调整项的元数据（id、settings 字段名、默认值、i18n 键）集中登记；新增调整项只需在注册表里加一条，并在 `src/client/tweaks/` 下新增一个注入文件。
 - **项目目录运行指示**（`src/client/tweaks/project-running-indicator.ts`）：从 `ctx.get('sessions')` / `ctx.get('workspaces')` 读取会话运行状态与目录归属，用 MutationObserver 在项目目录头行（`role="treeitem"[aria-expanded]`，稳定手写属性）内挂载应用自身的 `StateDot`（复用 `@deepseek-ai/dsh-client-ui-primitives` 的同一份模块，动画 keyframes 与样式 token 与对话标题处完全一致）。
+- **定位当前会话**（`src/client/tweaks/locate-current-session.ts`）：在 DSH 侧边栏"工作区"段头部的搜索按钮左边注入一个新按钮。锚点全部走 i18n 与语义片段：通过 `ctx.locale.bind()` 解析当前语言的搜索按钮 aria-label（`workspace` 命名空间的 `search.sessions.aria` 键）与顶部面包屑的 aria-label（`conversation` 命名空间的 `session.hierarchy` 键），locale 服务不可用时退回 `[class*="searchButton"]` / `[class*="crumbs"]` 语义片段兜底。点击后从面包屑（`button[disabled]` 的当前项）读出会话标题，用 `ctx.get('sessions')` 与 `ctx.get('workspaces')` 两个应用级 store 反查所在工作区标题（即使其工作区目录收起也能定位），再按标题匹配工作区行；依次穿透两级折叠——工作区收起时 click 展开、"展开其余 x 个会话"溢出按钮（`[class*="sessionOverflowButton"][aria-expanded="false"]`）挡住目标行时自动点开——然后 `scrollIntoView({ block: 'center' })` 滚动居中。悬停提示复刻了 DSH 原生 `<Tooltip>` 的自研气泡（fixed 定位 + 主题 token + 500ms 延迟 + 视口翻转），而非浏览器原生 `title`。MutationObserver 监听 `aria-selected` / `aria-expanded` 属性变化同步按钮可用性与挂载状态。
 
 ## 致谢
 

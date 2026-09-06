@@ -12,3 +12,7 @@ AGENTS.md
 .idea/
 .codegraph/
 .opencode/
+.zcode/
+.dsh/
+.openspec/
+openspec/

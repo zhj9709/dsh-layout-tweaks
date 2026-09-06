@@ -49,4 +49,11 @@ export const TWEAKS: readonly TweakDescriptor[] = [
     titleKey: 'tweak.projectRunningIndicator.title',
     descriptionKey: 'tweak.projectRunningIndicator.description',
   },
+  {
+    id: 'locate-current-session',
+    settingKey: 'locateCurrentSession',
+    defaultEnabled: true,
+    titleKey: 'tweak.locateCurrentSession.title',
+    descriptionKey: 'tweak.locateCurrentSession.description',
+  },
 ]
