@@ -213,8 +213,26 @@ interface Indicator {
 /**
  * Mount/unmount the live tweak. Returns the disposer; safe to call when the
  * app stores are absent (unknown host build) — the tweak then stays inert.
+ *
+ * HMR-safe: the guard lives on `window` so it survives module reloads. A
+ * hot-reload that calls this again before the previous cleanup runs will
+ * tear down the stale instance first instead of stacking two
+ * MutationObservers / two dots per row.
  */
+const GLOBAL_KEY = '__cst_project_running_indicator_cleanup__'
+function getGlobalCleanup(): (() => void) | undefined {
+  return (window as any)[GLOBAL_KEY]
+}
+function setGlobalCleanup(fn: (() => void) | undefined): void {
+  ;(window as any)[GLOBAL_KEY] = fn
+}
 export function setupProjectRunningIndicator(ctx: ClientContext): () => void {
+  const previous = getGlobalCleanup()
+  if (typeof previous === 'function') {
+    previous()
+    setGlobalCleanup(undefined)
+  }
+
   const removeStyles = installIndicatorStyles()
 
   let sessionList: SnapshotStoreLike<SessionListStateLike>
@@ -308,11 +326,14 @@ export function setupProjectRunningIndicator(ctx: ClientContext): () => void {
   const unsubscribeWorkspaces = workspaceList.subscribe(() => { scheduleSync() })
   sync()
 
-  return () => {
+  const cleanup = (): void => {
     unsubscribeSessions()
     unsubscribeWorkspaces()
     observer.disconnect()
     for (const row of [...indicators.keys()]) removeIndicator(row)
     removeStyles()
+    setGlobalCleanup(undefined)
   }
+  setGlobalCleanup(cleanup)
+  return cleanup
 }
