@@ -1,6 +1,6 @@
 {
   "name": "dsh-style-tweaks",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "DSH plugin: collection of opt-in style tweaks for DSH's UI — precise conversation column-width control (px stepper, presets, plugin-vs-native toggle, side margin) plus small fixes for the sidebar and the settings panel. Each setting has its own toggle in Settings.",
   "keywords": [
     "dsh",
