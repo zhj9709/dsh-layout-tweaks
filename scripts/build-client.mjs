@@ -40,7 +40,7 @@ function push(chunk) {
   outputLine += chunk.split('\n').length - 1
 }
 
-push('window.__ModuleLoader__.load({ id: "dsh-conversation-style-tweaks", factory: (require) => {')
+push('window.__ModuleLoader__.load({ id: "dsh-style-tweaks", factory: (require) => {')
 push('var __modules = Object.create(null); var __cache = Object.create(null);')
 const sections = []
 for (const filename of compiledFiles) {

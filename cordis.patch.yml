@@ -1,12 +1,12 @@
-# dsh-conversation-style-tweaks bundle patch
+# dsh-style-tweaks bundle patch
 #
 # Declared by `dsh.bundle.patch` in package.json: when the plugin is installed
 # through the official CLI —
 #
-#   dsh plugin --profile <name> add dsh-conversation-style-tweaks
+#   dsh plugin --profile <name> add dsh-style-tweaks
 #
-# — the command appends `dsh-conversation-style-tweaks` to the profile's bundle
+# — the command appends `dsh-style-tweaks` to the profile's bundle
 # stack and this patch mounts the server-side plugin row.
 - insert:
-    - id: conversation-style-tweaks
-      name: 'dsh-conversation-style-tweaks'
+    - id: style-tweaks
+      name: 'dsh-style-tweaks'

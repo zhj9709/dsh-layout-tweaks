@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — settings-nav-scroll tweak.
+ * dsh-style-tweaks — settings-nav-scroll tweak.
  *
  * Makes the settings dialog's LEFT nav column scrollable once its section
  * list outgrows the fixed-height panel, instead of silently clipping the

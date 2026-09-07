@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — locate-current-session tweak.
+ * dsh-style-tweaks — locate-current-session tweak.
  *
  * Adds a "locate current session" button to the left of the native search
  * button in the sidebar's "工作区" (workspaces) section header. Clicking it:
@@ -43,7 +43,7 @@
  * disabling the toggle in Settings causes the button to disappear with no
  * page refresh.
  *
- * @module dsh-conversation-style-tweaks/client/tweaks/locate-current-session
+ * @module dsh-style-tweaks/client/tweaks/locate-current-session
  */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'

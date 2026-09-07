@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — browser half.
+ * dsh-style-tweaks — browser half.
  *
  * Owns the runtime CSS that drives two feature areas under one Settings
  * panel:
@@ -8,7 +8,7 @@
  *   2. Opt-in CSS tweaks: stable-table layout on hover, with more added
  *      over time. Each tweak is a boolean field.
  *
- * Reads and writes the `conversation-style-tweaks` settings namespace via
+ * Reads and writes the `style-tweaks` settings namespace via
  * the same-origin route served by the server half.
  */
 
@@ -36,8 +36,8 @@ import { setupProjectRunningIndicator } from './tweaks/project-running-indicator
 import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
 import { setupSettingsNavScroll } from './tweaks/settings-nav-scroll.ts'
 
-const NS = 'conversation-style-tweaks'
-const SETTINGS_ROUTE = '/_dsh/conversation-style-tweaks/settings'
+const NS = 'style-tweaks'
+const SETTINGS_ROUTE = '/_dsh/style-tweaks/settings'
 
 /**
  * Maps a tweak id to its mount function. Add new tweaks here. Pure-CSS
@@ -98,9 +98,9 @@ interface ApiSuccess<T> { ok: true; value: T }
 interface ApiFailure { ok: false; error: { code: string; message: string } }
 
 const en = {
-  nav: 'Conversation style',
-  settingsTitle: 'Conversation style tweaks',
-  settingsIntro: 'Opt-in CSS tweaks for the conversation view: a precise column-width control (with presets and side margin) and a collection of small layout fixes. Each setting takes effect immediately and persists to your settings document.',
+  nav: 'Style tweaks',
+  settingsTitle: 'Style tweaks',
+  settingsIntro: 'Opt-in style tweaks for DSH: precise conversation column-width control (with presets and side margin) plus a set of small fixes for the sidebar and the settings panel. Each toggle applies immediately and persists to your settings document.',
   sectionLayout: 'Layout',
   sectionTweaks: 'Tweaks',
   dialogWidth: 'Dialog width',
@@ -138,9 +138,9 @@ const en = {
 type LocaleKey = keyof typeof en
 
 const zh: Record<LocaleKey, string> = {
-  nav: '对话样式',
-  settingsTitle: '对话样式调整',
-  settingsIntro: '对话视图的可选 CSS 调整：精确的列宽控制（含预设与两侧边距）以及一组小幅布局修复。每个开关都会立即生效并持久化到设置文档。',
+  nav: '样式调整',
+  settingsTitle: '样式调整',
+  settingsIntro: 'DSH 界面的可选样式调整：对话列宽精确控制（含预设与两侧边距），以及侧边栏与设置面板的一组小幅修复。每个开关立即生效并持久化到设置文档。',
   sectionLayout: '布局',
   sectionTweaks: '调整项',
   dialogWidth: '对话框宽度',
@@ -179,8 +179,8 @@ type Translate = (key: LocaleKey) => string
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** dsh-conversation-style-tweaks Settings copy. */
-    'conversation-style-tweaks': LocaleKey
+    /** dsh-style-tweaks Settings copy. */
+    'style-tweaks': LocaleKey
   }
 }
 
@@ -242,11 +242,11 @@ const BASE_CSS = `
 `
 
 function installBaseStyles(): () => void {
-  const id = 'dsh-conversation-style-tweaks-base'
+  const id = 'dsh-style-tweaks-base'
   let style = document.querySelector<HTMLStyleElement>(`style[data-plugin-css="${id}"]`)
   if (style === null) {
     style = document.createElement('style')
-    style.dataset.plugin = 'dsh-conversation-style-tweaks'
+    style.dataset.plugin = 'dsh-style-tweaks'
     style.dataset.pluginCss = id
     style.textContent = BASE_CSS
     document.head.appendChild(style)
@@ -269,14 +269,14 @@ async function apiRequest<T>(init?: RequestInit): Promise<T> {
       if (response.ok && body.ok) return body.value
       const failure = body as ApiFailure
       const retryable = response.status === 502 || response.status === 503
-      lastError = new Error(failure.error?.message ?? `Conversation style request failed with HTTP ${response.status}`)
+      lastError = new Error(failure.error?.message ?? `Style tweaks request failed with HTTP ${response.status}`)
       if (!retryable) throw lastError
     } catch (error) {
       lastError = error
     }
     await new Promise((resolve) => setTimeout(resolve, attempt * 250))
   }
-  throw lastError ?? new Error('Conversation style request failed')
+  throw lastError ?? new Error('Style tweaks request failed')
 }
 
 /** Client-side snapshot store fed by the same-origin Settings route. */
@@ -395,7 +395,7 @@ function Hint({ text }: { text: string }) {
   )
 }
 
-type SettingsSectionProps = PropsRuntime<'settings.section'> & PropsLocale<'conversation-style-tweaks'> & {
+type SettingsSectionProps = PropsRuntime<'settings.section'> & PropsLocale<'style-tweaks'> & {
   controller: SettingsClient
   t: Translate
 }
@@ -593,14 +593,14 @@ function assertTweakI18nComplete(): void {
   }
   const problems = [...missing('en', en), ...missing('zh', zh)]
   if (problems.length > 0) {
-    console.error('[dsh-conversation-style-tweaks] missing i18n keys:', problems)
+    console.error('[dsh-style-tweaks] missing i18n keys:', problems)
   }
 }
 
 export function apply(ctx: ClientContext): void {
   assertTweakI18nComplete()
-  ctx.effect(installBaseStyles, 'dsh-conversation-style-tweaks: base styles')
-  ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'dsh-conversation-style-tweaks: locale')
+  ctx.effect(installBaseStyles, 'dsh-style-tweaks: base styles')
+  ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'dsh-style-tweaks: locale')
   const t = ctx.locale.bind(NS)
 
   const controller = new SettingsClient()
@@ -633,7 +633,7 @@ export function apply(ctx: ClientContext): void {
     sync()
     void controller.load()
     return controller.subscribe(sync)
-  }, 'dsh-conversation-style-tweaks: conversation width')
+  }, 'dsh-style-tweaks: conversation width')
 
   // Mount / unmount tweak styles live as settings change. The subscribe
   // callback re-runs on every settings change, so all toggles apply live.
@@ -657,7 +657,7 @@ export function apply(ctx: ClientContext): void {
     }
     sync()
     return controller.subscribe(sync)
-  }, 'dsh-conversation-style-tweaks: live tweak styles')
+  }, 'dsh-style-tweaks: live tweak styles')
 
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',

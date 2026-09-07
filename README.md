@@ -1,12 +1,12 @@
-# dsh-conversation-style-tweaks
+# dsh-style-tweaks
 
 > 依赖版本：deepseek-harness v0.1.2-rc.1
 
-[DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)（DSH）Web UI 插件：为对话视图提供一套可选的 CSS 调整项——精确的列宽控制，以及一系列小幅度布局修复。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）Web UI 插件：为 DSH 界面提供一套可选的样式调整——精确的对话列宽控制，以及侧边栏与设置面板的一系列小幅度修复。
 
 ## 功能
 
-### 布局（端口自 dsh-dialog-width）
+### 布局
 
 - **插件宽度控制**（默认开启）：开启时插件自带的列宽输入 / 预设接管列宽，并隐藏 DSH 原生的拖拽手柄；关闭时原生手柄接管列宽，插件同步显示当前值。
 - **对话框宽度**：600–1600 px 之间任意值；含 748（默认）/ 880（稍宽）/ 1024（更宽）三个预设按钮。
@@ -22,7 +22,7 @@
 - **设置菜单可滚动（默认开启）**：设置项较多时，让设置面板左侧菜单可以上下滚动，而不是把放不下的项直接裁掉（面板高度固定且 `overflow: hidden`，原生样式只给右侧内容列加了滚动）。滚动条为悬浮式细条：停靠在菜单右侧的留白里、不挤压菜单宽度，只在列表实际滚动时出现，停止滚动约 0.8 秒后淡出。
 
 ```yaml
-conversation-style-tweaks:
+style-tweaks:
   # 布局
   usePluginWidth: true   # 默认 true；false 时由原生拖拽手柄接管
   dialogWidth: 748       # 600–1600 px
@@ -36,23 +36,23 @@ conversation-style-tweaks:
   settingsNavScroll: true       # 默认 true；false 则关闭设置左侧菜单滚动
 ```
 
-设置入口：**设置 → 对话样式**。
+设置入口：**设置 → 样式调整**。
 
 ## 安装
 
 ```bash
 # 方式一：从 npm 安装（推荐，预构建产物）
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-conversation-style-tweaks
+npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks
 
 # 方式二：从 GitHub 仓库安装（源码，会运行自包含的 prepare 构建）
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-conversation-style-tweaks
+npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-style-tweaks
 ```
 
 `add` 后面的包说明会**原样转发给 pnpm**，因此可以指定版本——npm 包用 `@版本号`，GitHub 源码用 `#tag`：
 
 ```bash
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-conversation-style-tweaks@0.0.2                    # 锁定 npm 版本
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-conversation-style-tweaks#v0.0.2     # 锁定 git tag
+npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks@0.1.0                    # 锁定 npm 版本
+npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-style-tweaks#v0.1.0     # 锁定 git tag
 ```
 
 安装完成后**重启一次 `dsh web`**（bundle 插件在进程启动时扫描）。
@@ -85,7 +85,7 @@ npx -y @deepseek-ai/dsh plugin --profile web add .        # 从本目录作为 b
 
 2. **复制到 profile 目录**：
    ```bash
-   cp lib/client.js ~/.dsh/profiles/web/node_modules/dsh-conversation-style-tweaks/lib/client.js
+   cp lib/client.js ~/.dsh/profiles/web/node_modules/dsh-style-tweaks/lib/client.js
    ```
 
 3. **DSH 的 client-plugin HMR receiver** 会检测文件变更并自动重新加载插件，无需重新安装。
@@ -96,7 +96,7 @@ npx -y @deepseek-ai/dsh plugin --profile web add .        # 从本目录作为 b
 
 ## 工作原理
 
-- **服务端**（`src/index.ts`）：注册 `conversation-style-tweaks` 设置命名空间，并挂载同源路由 `/_dsh/conversation-style-tweaks/settings`。
+- **服务端**（`src/index.ts`）：注册 `style-tweaks` 设置命名空间，并挂载同源路由 `/_dsh/style-tweaks/settings`。
 - **浏览器端**（`src/client/index.tsx`）：读写该路由、渲染设置页，并根据每个开关的状态实时挂载 / 卸载对应的调整项（纯 CSS 调整项注入运行时 `<style>` 元素；JS 级调整项还会读写应用自身的状态 store 并修补 DOM）。
 - **列宽样式引擎**（`src/client/conversation-width.ts`）：写入 `--dsh-chat-user-width` CSS 变量，并在插件接管列宽时隐藏原生 `[data-width-handle]` 拖拽手柄；宽度值同时镜像到原生手柄读取的 localStorage 槽位，开关切换时无缝往返。
 - **调整项注册表**（`src/client/tweaks/registry.ts`）：每个调整项的元数据（id、settings 字段名、默认值、i18n 键）集中登记；新增调整项只需在注册表里加一条，并在 `src/client/tweaks/` 下新增一个注入文件。

@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — stable-turn-rail tweak.
+ * dsh-style-tweaks — stable-turn-rail tweak.
  *
  * Fixes the visual jump of the turn-navigation rail when the reader scrolls
  * the chat upward into the system-prompt area at the very top of the

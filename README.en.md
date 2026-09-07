@@ -1,12 +1,12 @@
-# dsh-conversation-style-tweaks
+# dsh-style-tweaks
 
 > Dependency version: deepseek-harness v0.1.2-rc.1
 
-A [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) (DSH) web plugin that bundles a precise column-width control with a collection of opt-in CSS tweaks for the conversation view.
+A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) web plugin that bundles a precise conversation column-width control with a collection of opt-in style tweaks for DSH's UI — including small fixes for the sidebar and the settings panel.
 
 ## Features
 
-### Layout (ported from dsh-dialog-width)
+### Layout
 
 - **Plugin width control (default on)** — when ON, the plugin's width input / presets drive the conversation column and DSH's native drag handles are hidden; when OFF, DSH's native handles own the column and the width input mirrors their value.
 - **Dialog width** — any value between 600 and 1600 px; includes presets 748 (default) / 880 (Wide) / 1024 (Extra wide).
@@ -22,7 +22,7 @@ A [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) (DSH)
 - **Scrollable settings nav (default on)** — lets the settings dialog's left menu scroll when its entries outgrow the panel, instead of silently clipping the ones at the bottom (the panel has a fixed height and `overflow: hidden`; stock CSS only gave the right content column a scroll treatment). The scrollbar is an overlay-style thin strip: parked in the rail's spare right padding so it never squeezes the menu, and visible only while the list is actually scrolling, fading out ~0.8 s after scrolling stops.
 
 ```yaml
-conversation-style-tweaks:
+style-tweaks:
   # Layout
   usePluginWidth: true             # default true; false hands the column back to native handles
   dialogWidth: 748                 # 600–1600 px
@@ -36,24 +36,24 @@ conversation-style-tweaks:
   settingsNavScroll: true          # default true; false disables the settings-nav scrolling
 ```
 
-Settings entry: **Settings → Conversation style**.
+Settings entry: **Settings → Style tweaks**.
 
 ## Install
 
 ```bash
 # from npm (recommended, prebuilt)
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-conversation-style-tweaks
+npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks
 
 # from GitHub (source; runs the self-contained prepare build)
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-conversation-style-tweaks
+npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-style-tweaks
 ```
 
 The package spec after `add` is forwarded to pnpm verbatim, so versions can be
 pinned — `@version` for the npm package, `#tag` for the GitHub source:
 
 ```bash
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-conversation-style-tweaks@0.0.2                    # pin the npm version
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-conversation-style-tweaks#v0.0.2     # pin a git tag
+npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks@0.1.0                    # pin the npm version
+npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-style-tweaks#v0.1.0     # pin a git tag
 ```
 
 Restart DSH web once after installing (bundle plugins are scanned at process start).
@@ -86,7 +86,7 @@ Only the client plugin (`lib/client.js`) needs to be loaded by the DSH runtime. 
 
 2. **Copy to the profile directory**:
    ```bash
-   cp lib/client.js ~/.dsh/profiles/web/node_modules/dsh-conversation-style-tweaks/lib/client.js
+   cp lib/client.js ~/.dsh/profiles/web/node_modules/dsh-style-tweaks/lib/client.js
    ```
 
 3. **DSH's client-plugin HMR receiver** detects the change and automatically reloads the plugin — no reinstall required.
@@ -97,7 +97,7 @@ Only client plugins (`client.js`) support hot reloading. Changes to the `apps/we
 
 ## How it works
 
-- **Server** (`src/index.ts`) registers the `conversation-style-tweaks` settings namespace and mounts a same-origin route (`/_dsh/conversation-style-tweaks/settings`).
+- **Server** (`src/index.ts`) registers the `style-tweaks` settings namespace and mounts a same-origin route (`/_dsh/style-tweaks/settings`).
 - **Browser** (`src/client/index.tsx`) reads/writes that route, renders the Settings section, and mounts / unmounts each tweak live based on its toggle (pure-CSS tweaks inject runtime `<style>` elements; JS-level tweaks also read the app's own state stores and patch the DOM).
 - **Column-width engine** (`src/client/conversation-width.ts`) writes the `--dsh-chat-user-width` CSS variable and hides DSH's native `[data-width-handle]` drag strips while plugin width control is on; the chosen px is also mirrored into the localStorage slot the native handles read, so flipping the switch round-trips cleanly.
 - **Tweak registry** (`src/client/tweaks/registry.ts`) centralises each tweak's metadata (id, settings field name, default value, i18n keys); adding a new tweak means appending one entry here and dropping a new injector file under `src/client/tweaks/`.

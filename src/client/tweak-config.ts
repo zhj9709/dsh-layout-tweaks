@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — client-side constants & resolvers.
+ * dsh-style-tweaks — client-side constants & resolvers.
  *
  * Mirror of the runtime values in `src/config.ts`. Duplicated because the
  * client tsconfig has `rootDir: src/client` (and explicitly excludes parent
@@ -11,7 +11,7 @@
  * rootDir restriction allows (no runtime reference is emitted).
  */
 
-import type { ResolvedConversationStyleTweaksConfig } from './tweak-types.ts'
+import type { ResolvedStyleTweaksConfig } from './tweak-types.ts'
 
 // ── Column-width constants (mirror src/config.ts) ───────────────────────
 /** Dialog width min px. */
@@ -64,12 +64,12 @@ export function resolveSideMargin(value: number | undefined): number {
 }
 
 /**
- * Build a fully-defaulted ResolvedConversationStyleTweaksConfig from any
+ * Build a fully-defaulted ResolvedStyleTweaksConfig from any
  * partial input. Mirror of `resolveConfig` in src/config.ts.
  */
 export function resolveClientConfig(
-  value: Partial<ResolvedConversationStyleTweaksConfig> | undefined,
-): ResolvedConversationStyleTweaksConfig {
+  value: Partial<ResolvedStyleTweaksConfig> | undefined,
+): ResolvedStyleTweaksConfig {
   return {
     dialogWidth: resolveDialogWidth(value?.dialogWidth),
     usePluginWidth: value?.usePluginWidth ?? DEFAULT_USE_PLUGIN_WIDTH,

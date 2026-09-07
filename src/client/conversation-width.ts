@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — conversation-width override (browser half).
+ * dsh-style-tweaks — conversation-width override (browser half).
  *
  * When the user turns "plugin width control" on, this module:
  *
@@ -62,7 +62,7 @@
  * `apply` effect MUST keep the same controller alive across settings
  * changes — tearing it down and reinstalling on every tick would race with
  * the user's viewport-driven sidebar drag and miss the very first frame.
- * @module dsh-conversation-style-tweaks/client/conversation-width
+ * @module dsh-style-tweaks/client/conversation-width
  */
 
 import { CONVERSATION_WIDTH_STORAGE_KEY } from './tweak-config.ts'
@@ -104,11 +104,11 @@ export interface ConversationWidthController {
  * @returns a controller exposing `setWidth` + `dispose`.
  */
 export function installConversationWidthStyles(widthPx: number, sideMargin: number): ConversationWidthController {
-  const id = 'dsh-conversation-style-tweaks-conversation-width'
+  const id = 'dsh-style-tweaks-conversation-width'
   let style = document.querySelector<HTMLStyleElement>(`style[data-plugin-css="${id}"]`)
   if (style === null) {
     style = document.createElement('style')
-    style.dataset.plugin = 'dsh-conversation-style-tweaks'
+    style.dataset.plugin = 'dsh-style-tweaks'
     style.dataset.pluginCss = id
     document.head.appendChild(style)
   }

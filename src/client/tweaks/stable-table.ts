@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — stable-table tweak.
+ * dsh-style-tweaks — stable-table tweak.
  *
  * Locks markdown-table layout on hover so surrounding content does not
  * reflow ("text jumps when I hover a table").

@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — client-side type mirror.
+ * dsh-style-tweaks — client-side type mirror.
  *
  * Mirror of the type definitions in `src/config.ts`. Duplicated because the
  * client tsconfig has `rootDir: src/client`, so even `import type` from a
@@ -10,7 +10,7 @@
  */
 
 /** Configuration after static validation, with every default materialized. */
-export interface ResolvedConversationStyleTweaksConfig {
+export interface ResolvedStyleTweaksConfig {
   /** Dialog width in px (748 = the stock DSH column). */
   dialogWidth: number
   /** Whether the plugin's width control owns the column (vs. native handles). */

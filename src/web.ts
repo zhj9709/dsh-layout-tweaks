@@ -1,13 +1,13 @@
 /**
- * dsh-conversation-style-tweaks — optional Web routes.
+ * dsh-style-tweaks — optional Web routes.
  *
- * The browser Settings panel reads and writes the `conversation-style-tweaks`
+ * The browser Settings panel reads and writes the `style-tweaks`
  * namespace through this same-origin route, because the Web settings RPC only
  * exposes a fixed allowlist of namespaces (hardcoded in dsh-host-apiproxy
  * since rc.6). The route proxies to the real `ctx.settings` service, so the
  * settings document (settings.yaml) stays the single source of truth and
  * hand edits keep working.
- * @module dsh-conversation-style-tweaks/web
+ * @module dsh-style-tweaks/web
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -15,13 +15,13 @@ import type { Context } from '@deepseek-ai/cordis'
 // Type-only import activates the optional webServer Context declaration.
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import { SettingsConflictError } from '@deepseek-ai/dsh-settings'
-import { CONVERSATION_STYLE_TWEAKS_SETTINGS_NAMESPACE } from './config.ts'
+import { STYLE_TWEAKS_SETTINGS_NAMESPACE } from './config.ts'
 
 /** Exact route used by the browser Settings page. */
-export const SETTINGS_ROUTE = '/_dsh/conversation-style-tweaks/settings'
+export const SETTINGS_ROUTE = '/_dsh/style-tweaks/settings'
 
 /** Public Settings snapshot; no secrets exist in this namespace. */
-export interface ConversationStyleTweaksSnapshot {
+export interface StyleTweaksSnapshot {
   writable: boolean
   value: unknown
   revision: number
@@ -40,7 +40,7 @@ interface UnsetRequest {
   expectedRevision: number
 }
 
-type ConversationStyleTweaksRequest = SetRequest | UnsetRequest
+type StyleTweaksRequest = SetRequest | UnsetRequest
 
 type JsonResponse<T> =
   | { ok: true; value: T }
@@ -95,7 +95,7 @@ export async function readJson(req: IncomingMessage, maxBytes = 16 * 1024): Prom
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
 }
 
-function parseRequest(value: unknown): ConversationStyleTweaksRequest {
+function parseRequest(value: unknown): StyleTweaksRequest {
   if (!isRecord(value) || typeof value.action !== 'string') throw new TypeError('action is required')
   if (typeof value.expectedRevision !== 'number' || !Number.isSafeInteger(value.expectedRevision) || (value.expectedRevision as number) < 0) {
     throw new TypeError('expectedRevision must be a non-negative integer')
@@ -117,16 +117,16 @@ export function messageOf(error: unknown): string {
 }
 
 /** Same-origin Settings read/write handler. */
-export class ConversationStyleTweaksWebBackend {
+export class StyleTweaksWebBackend {
   constructor(private readonly ctx: Context) {}
 
   private descriptor() {
-    const row = this.ctx.settings.describe().find(candidate => candidate.ns === CONVERSATION_STYLE_TWEAKS_SETTINGS_NAMESPACE)
-    if (row === undefined) throw new Error('conversation-style-tweaks settings namespace is not registered')
+    const row = this.ctx.settings.describe().find(candidate => candidate.ns === STYLE_TWEAKS_SETTINGS_NAMESPACE)
+    if (row === undefined) throw new Error('style-tweaks settings namespace is not registered')
     return row
   }
 
-  private snapshot(): ConversationStyleTweaksSnapshot {
+  private snapshot(): StyleTweaksSnapshot {
     const descriptor = this.descriptor()
     return {
       writable: this.ctx.settings.writable,
@@ -141,8 +141,8 @@ export class ConversationStyleTweaksWebBackend {
       try {
         json(res, 200, { ok: true, value: this.snapshot() })
       } catch (error) {
-        this.ctx.logger.warn('dsh-conversation-style-tweaks Settings snapshot failed: %s', messageOf(error))
-        requestError(res, 503, 'settings-unavailable', 'Conversation style tweaks are unavailable')
+        this.ctx.logger.warn('dsh-style-tweaks Settings snapshot failed: %s', messageOf(error))
+        requestError(res, 503, 'settings-unavailable', 'Style tweaks are unavailable')
       }
       return
     }
@@ -155,7 +155,7 @@ export class ConversationStyleTweaksWebBackend {
       requestError(res, 403, 'origin-rejected', 'The request must originate from this DSH Web application')
       return
     }
-    let parsed: ConversationStyleTweaksRequest
+    let parsed: StyleTweaksRequest
     try {
       parsed = parseRequest(await readJson(req))
     } catch (error) {
@@ -164,9 +164,9 @@ export class ConversationStyleTweaksWebBackend {
     }
     try {
       if (parsed.action === 'set') {
-        await this.ctx.settings.update(CONVERSATION_STYLE_TWEAKS_SETTINGS_NAMESPACE, { [parsed.field]: parsed.value }, parsed.expectedRevision)
+        await this.ctx.settings.update(STYLE_TWEAKS_SETTINGS_NAMESPACE, { [parsed.field]: parsed.value }, parsed.expectedRevision)
       } else {
-        await this.ctx.settings.mutate(CONVERSATION_STYLE_TWEAKS_SETTINGS_NAMESPACE, [{ op: 'unset', path: [parsed.field] }], parsed.expectedRevision)
+        await this.ctx.settings.mutate(STYLE_TWEAKS_SETTINGS_NAMESPACE, [{ op: 'unset', path: [parsed.field] }], parsed.expectedRevision)
       }
       json(res, 200, { ok: true, value: this.snapshot() })
     } catch (error) {
@@ -186,7 +186,7 @@ export class ConversationStyleTweaksWebBackend {
  * @param ctx - plugin context owning route effects.
  * @param backend - Settings handler.
  */
-export function installConversationStyleTweaksWeb(ctx: Context, backend: ConversationStyleTweaksWebBackend): void {
+export function installStyleTweaksWeb(ctx: Context, backend: StyleTweaksWebBackend): void {
   ctx.inject(['webServer'], (webCtx) => {
     webCtx.effect(() => {
       return webCtx.webServer.register({
@@ -194,6 +194,6 @@ export function installConversationStyleTweaksWeb(ctx: Context, backend: Convers
         path: SETTINGS_ROUTE,
         handler: (req, res) => backend.handle(req, res),
       })
-    }, 'dsh-conversation-style-tweaks: Web routes')
+    }, 'dsh-style-tweaks: Web routes')
   })
 }

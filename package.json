@@ -1,14 +1,14 @@
 {
-  "name": "dsh-conversation-style-tweaks",
+  "name": "dsh-style-tweaks",
   "version": "0.0.2",
-  "description": "DSH plugin: collection of opt-in CSS tweaks for the conversation view — precise column-width control (px stepper, presets, plugin-vs-native toggle, side margin) plus small layout fixes like stable table layout on hover. Each setting has its own toggle in Settings.",
+  "description": "DSH plugin: collection of opt-in style tweaks for DSH's UI — precise conversation column-width control (px stepper, presets, plugin-vs-native toggle, side margin) plus small fixes for the sidebar and the settings panel. Each setting has its own toggle in Settings.",
   "keywords": [
     "dsh",
     "deepseek",
     "deepseek-ai",
     "cordis",
     "plugin",
-    "conversation",
+    "layout",
     "style",
     "tweaks",
     "chat-ui",
@@ -20,7 +20,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zhj9709/dsh-conversation-style-tweaks.git"
+    "url": "git+https://github.com/zhj9709/dsh-style-tweaks.git"
   },
   "publishConfig": {
     "access": "public"

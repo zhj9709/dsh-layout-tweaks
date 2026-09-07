@@ -1,23 +1,23 @@
 /**
- * dsh-conversation-style-tweaks — configuration.
+ * dsh-style-tweaks — configuration.
  *
- * Owns the `conversation-style-tweaks` settings namespace. Two feature
+ * Owns the `style-tweaks` settings namespace. Two feature
  * areas:
  *   1. Column-width control (ported from dsh-dialog-width): a px input
  *      (600–1600) with presets, a plugin-vs-native toggle, and side margin.
  *   2. Opt-in CSS tweaks (stable-table layout on hover, with more added
  *      over time). Each tweak is a boolean field.
- * @module dsh-conversation-style-tweaks/config
+ * @module dsh-style-tweaks/config
  */
 
 import z from '@deepseek-ai/schemastery'
 import type Schema from '@deepseek-ai/schemastery'
 
 /** Settings document namespace owned by this plugin. */
-export const CONVERSATION_STYLE_TWEAKS_SETTINGS_NAMESPACE = 'conversation-style-tweaks'
+export const STYLE_TWEAKS_SETTINGS_NAMESPACE = 'style-tweaks'
 
 /** Raw user-facing configuration (partial inputs receive schema defaults). */
-export interface ConversationStyleTweaksConfig {
+export interface StyleTweaksConfig {
   // ── Column-width control (ported from dsh-dialog-width) ──────────────
   /**
    * Conversation column width in px. The plugin's own width input / preset
@@ -130,7 +130,7 @@ export const DEFAULT_LOCATE_CURRENT_SESSION = true
 export const DEFAULT_SETTINGS_NAV_SCROLL = true
 
 /** Configuration schema with documented defaults. */
-export const Config: Schema<ConversationStyleTweaksConfig> = z.object({
+export const Config: Schema<StyleTweaksConfig> = z.object({
   dialogWidth: z.number().min(MIN_DIALOG_WIDTH).max(MAX_DIALOG_WIDTH).default(DEFAULT_DIALOG_WIDTH),
   usePluginWidth: z.boolean().default(DEFAULT_USE_PLUGIN_WIDTH),
   sideMargin: z.number().min(MIN_SIDE_MARGIN).default(DEFAULT_SIDE_MARGIN),
@@ -143,7 +143,7 @@ export const Config: Schema<ConversationStyleTweaksConfig> = z.object({
 })
 
 /** Configuration after static validation, with every default materialized. */
-export interface ResolvedConversationStyleTweaksConfig {
+export interface ResolvedStyleTweaksConfig {
   /** Dialog width in px (748 = the stock DSH column). */
   dialogWidth: number
   /** Whether the plugin's width control owns the column (vs. native handles). */
@@ -165,7 +165,7 @@ export interface ResolvedConversationStyleTweaksConfig {
 }
 
 /** Resolve a partial config into a fully defaulted value. */
-export function resolveConfig(config: ConversationStyleTweaksConfig = {}): ResolvedConversationStyleTweaksConfig {
+export function resolveConfig(config: StyleTweaksConfig = {}): ResolvedStyleTweaksConfig {
   return {
     dialogWidth: resolveDialogWidth(config.dialogWidth),
     usePluginWidth: config.usePluginWidth ?? DEFAULT_USE_PLUGIN_WIDTH,

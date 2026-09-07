@@ -1,5 +1,5 @@
 /**
- * DSH-conversation-style-tweaks — code-block-flush-top tweak.
+ * DSH-style-tweaks — code-block-flush-top tweak.
  *
  * Removes the 16 px of top whitespace above and inside every highlighted
  * code block so the highlighted box sits flush with the preceding

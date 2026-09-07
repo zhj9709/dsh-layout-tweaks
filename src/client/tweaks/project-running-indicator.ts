@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — project-running-indicator tweak.
+ * dsh-style-tweaks — project-running-indicator tweak.
  *
  * The first non-pure-CSS tweak: it renders the *app's own* `StateDot`
  * (the animated pixel-chase shown left of a running conversation's title,

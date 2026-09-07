@@ -1,5 +1,5 @@
 /**
- * dsh-conversation-style-tweaks — tweak registry.
+ * dsh-style-tweaks — tweak registry.
  *
  * Central catalogue of all CSS tweaks the plugin can inject. Each tweak is
  * described once here; the client iterates this list to (a) render Settings
