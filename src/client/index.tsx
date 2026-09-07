@@ -34,6 +34,7 @@ import { injectStableTurnRailStyles } from './tweaks/stable-turn-rail.ts'
 import { injectCodeBlockFlushTopStyles } from './tweaks/code-block-flush-top.ts'
 import { setupProjectRunningIndicator } from './tweaks/project-running-indicator.ts'
 import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
+import { setupSettingsNavScroll } from './tweaks/settings-nav-scroll.ts'
 
 const NS = 'conversation-style-tweaks'
 const SETTINGS_ROUTE = '/_dsh/conversation-style-tweaks/settings'
@@ -49,6 +50,7 @@ const TWEAK_INJECTORS: Record<string, (ctx: ClientContext) => () => void> = {
   'code-block-flush-top': () => injectCodeBlockFlushTopStyles(),
   'project-running-indicator': setupProjectRunningIndicator,
   'locate-current-session': setupLocateCurrentSession,
+  'settings-nav-scroll': setupSettingsNavScroll,
 }
 
 interface TweaksValue {
@@ -70,6 +72,8 @@ interface TweaksValue {
   projectRunningIndicator?: boolean
   /** Whether the locate-current-session tweak is enabled. */
   locateCurrentSession?: boolean
+  /** Whether the settings-nav-scroll tweak is enabled. */
+  settingsNavScroll?: boolean
 }
 
 interface ResolvedTweaks {
@@ -81,6 +85,7 @@ interface ResolvedTweaks {
   codeBlockFlushTop: boolean
   projectRunningIndicator: boolean
   locateCurrentSession: boolean
+  settingsNavScroll: boolean
 }
 
 interface Snapshot {
@@ -126,6 +131,8 @@ const en = {
   'tweak.projectRunningIndicator.description': 'Show the conversation title\'s animated running dot on the right side of each project directory in the sidebar, so a running conversation stays visible even when the directory is collapsed.',
   'tweak.locateCurrentSession.title': 'Locate current session',
   'tweak.locateCurrentSession.description': 'Add a "locate" button next to the sidebar search box. Click it to expand the current session\'s workspace and scroll the session into view.',
+  'tweak.settingsNavScroll.title': 'Scrollable settings nav',
+  'tweak.settingsNavScroll.description': 'Let the settings dialog\'s left menu scroll when its entries outgrow the panel, instead of silently clipping the ones at the bottom.',
 } as const
 
 type LocaleKey = keyof typeof en
@@ -164,6 +171,8 @@ const zh: Record<LocaleKey, string> = {
   'tweak.projectRunningIndicator.description': '在侧边栏项目目录右侧显示与对话标题一致的运行动画圆点，目录收起时也能一眼看出里面有对话正在进行。',
   'tweak.locateCurrentSession.title': '定位当前会话',
   'tweak.locateCurrentSession.description': '在侧边栏搜索框旁边添加一个"定位"按钮。点击后展开当前会话所属的工作区目录，并将该会话滚动到侧边栏视口内。',
+  'tweak.settingsNavScroll.title': '设置菜单可滚动',
+  'tweak.settingsNavScroll.description': '设置项较多时，让设置面板左侧菜单可以上下滚动，而不是把放不下的项直接裁掉。',
 }
 
 type Translate = (key: LocaleKey) => string
@@ -185,6 +194,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     codeBlockFlushTop: value?.codeBlockFlushTop ?? true,
     projectRunningIndicator: value?.projectRunningIndicator ?? true,
     locateCurrentSession: value?.locateCurrentSession ?? true,
+    settingsNavScroll: value?.settingsNavScroll ?? true,
   }
 }
 

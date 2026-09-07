@@ -19,6 +19,7 @@
 - **代码块顶部贴齐（默认开启）**：去掉高亮代码块上方的 16 px 空白，让代码块紧贴在前面的段落、列表项或标题下方。
 - **项目目录运行指示（默认开启）**：在侧边栏项目目录右侧显示与对话标题一致的运行动画圆点，目录收起时也能一眼看出里面有对话正在进行。
 - **定位当前会话（默认开启）**：在侧边栏"工作区"段头部的搜索按钮左边新增一个定位按钮；点击后自动展开当前会话所属的工作区目录（包括"展开其余 x 个会话"的折叠层），将该会话滚动到侧边栏视口中央。无当前会话时按钮禁用并提示"请先打开一个会话"。
+- **设置菜单可滚动（默认开启）**：设置项较多时，让设置面板左侧菜单可以上下滚动，而不是把放不下的项直接裁掉（面板高度固定且 `overflow: hidden`，原生样式只给右侧内容列加了滚动）。滚动条为悬浮式细条：停靠在菜单右侧的留白里、不挤压菜单宽度，只在列表实际滚动时出现，停止滚动约 0.8 秒后淡出。
 
 ```yaml
 conversation-style-tweaks:
@@ -32,6 +33,7 @@ conversation-style-tweaks:
   codeBlockFlushTop: true       # 默认 true；false 则关闭
   projectRunningIndicator: true # 默认 true；false 则关闭
   locateCurrentSession: true    # 默认 true；false 则隐藏侧边栏定位按钮
+  settingsNavScroll: true       # 默认 true；false 则关闭设置左侧菜单滚动
 ```
 
 设置入口：**设置 → 对话样式**。
@@ -100,6 +102,7 @@ npx -y @deepseek-ai/dsh plugin --profile web add .        # 从本目录作为 b
 - **调整项注册表**（`src/client/tweaks/registry.ts`）：每个调整项的元数据（id、settings 字段名、默认值、i18n 键）集中登记；新增调整项只需在注册表里加一条，并在 `src/client/tweaks/` 下新增一个注入文件。
 - **项目目录运行指示**（`src/client/tweaks/project-running-indicator.ts`）：从 `ctx.get('sessions')` / `ctx.get('workspaces')` 读取会话运行状态与目录归属，用 MutationObserver 在项目目录头行（`role="treeitem"[aria-expanded]`，稳定手写属性）内挂载应用自身的 `StateDot`（复用 `@deepseek-ai/dsh-client-ui-primitives` 的同一份模块，动画 keyframes 与样式 token 与对话标题处完全一致）。
 - **定位当前会话**（`src/client/tweaks/locate-current-session.ts`）：在 DSH 侧边栏"工作区"段头部的搜索按钮左边注入一个新按钮。锚点全部走 i18n 与语义片段：通过 `ctx.locale.bind()` 解析当前语言的搜索按钮 aria-label（`workspace` 命名空间的 `search.sessions.aria` 键）与顶部面包屑的 aria-label（`conversation` 命名空间的 `session.hierarchy` 键），locale 服务不可用时退回 `[class*="searchButton"]` / `[class*="crumbs"]` 语义片段兜底。点击后从面包屑（`button[disabled]` 的当前项）读出会话标题，用 `ctx.get('sessions')` 与 `ctx.get('workspaces')` 两个应用级 store 反查所在工作区标题（即使其工作区目录收起也能定位），再按标题匹配工作区行；依次穿透两级折叠——工作区收起时 click 展开、"展开其余 x 个会话"溢出按钮（`[class*="sessionOverflowButton"][aria-expanded="false"]`）挡住目标行时自动点开——然后 `scrollIntoView({ block: 'center' })` 滚动居中。悬停提示复刻了 DSH 原生 `<Tooltip>` 的自研气泡（fixed 定位 + 主题 token + 500ms 延迟 + 视口翻转），而非浏览器原生 `title`。MutationObserver 监听 `aria-selected` / `aria-expanded` 属性变化同步按钮可用性与挂载状态。
+- **设置菜单可滚动**（`src/client/tweaks/settings-nav-scroll.ts`）：DSH 设置面板（`SettingsRoot`）高度固定且 `overflow: hidden`，原生样式只让右侧内容列（`.options`）滚动；左侧菜单列表 `.navList` 没有 `min-height: 0` 与 overflow 处理，条目多时被面板直接裁掉。本调整项用"两条 CSS 规则 + 一个小型 JS 驱动"实现：基础规则 `flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; margin-inline-end: -12px` 让列表成为滚动容器，并把滚动条"停靠"进导航栏右侧的 12px 留白里（8px 间距 + 4px 条位，恰好占满留白），滑块悬浮在留白上、与菜单项保持 8px 间距；菜单项上限 `max-width: 164px`（DSH 原生 188 导航 − 2×12 padding）钉住原生宽度，无论滚动条出现与否、悬停还是滚动，菜单项都与原生完全同宽；`::-webkit-scrollbar { width: 4px }` 比全局皮肤细两档。显示时机由 JS 驱动：第一版用 `:not(:hover)` 隐藏滑块，但 Chromium 在宿主 `:hover` 变化时不会可靠重绘自定义滚动条伪元素（实测表现为"点击菜单才出现"），因此改为监听列表 `scroll` 事件——滚动时给列表加 `cst-nav-scroll-show` 类显示滑块（颜色沿用面板继承的 l2 主题 token），停止滚动约 0.8 秒后移除类淡出；MutationObserver 在设置弹窗卸载/重开时保持监听器挂在当前列表上。选择器用"弹窗结构 + CSS Modules 语义片段"双保险（DSH 类名按 `[hash]_[local]` 哈希，`navList` 局部名全 DSH 唯一），无需 `!important`。
 
 ## 致谢
 

@@ -56,4 +56,11 @@ export const TWEAKS: readonly TweakDescriptor[] = [
     titleKey: 'tweak.locateCurrentSession.title',
     descriptionKey: 'tweak.locateCurrentSession.description',
   },
+  {
+    id: 'settings-nav-scroll',
+    settingKey: 'settingsNavScroll',
+    defaultEnabled: true,
+    titleKey: 'tweak.settingsNavScroll.title',
+    descriptionKey: 'tweak.settingsNavScroll.description',
+  },
 ]

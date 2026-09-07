@@ -75,6 +75,20 @@ export interface ConversationStyleTweaksConfig {
    * ui-session service face and is out of scope; only ongoing shows.
    */
   projectRunningIndicator?: boolean
+  /**
+   * Add a "locate" button next to the sidebar search box; clicking it
+   * expands the current session's workspace and scrolls the session into
+   * view. Client-side toggle only: the browser bundle reads this field and
+   * mounts / unmounts the button live.
+   */
+  locateCurrentSession?: boolean
+  /**
+   * Let the settings dialog's left nav column scroll once its section list
+   * outgrows the fixed-height panel, instead of the panel's
+   * `overflow: hidden` clipping the bottom entries (unreachable when enough
+   * plugins register settings sections).
+   */
+  settingsNavScroll?: boolean
 }
 
 // ── Column-width constants ───────────────────────────────────────────────
@@ -110,6 +124,10 @@ export const DEFAULT_STABLE_TURN_RAIL = true
 export const DEFAULT_CODE_BLOCK_FLUSH_TOP = true
 /** Default: every shipped tweak is on. */
 export const DEFAULT_PROJECT_RUNNING_INDICATOR = true
+/** Default: every shipped tweak is on. */
+export const DEFAULT_LOCATE_CURRENT_SESSION = true
+/** Default: every shipped tweak is on. */
+export const DEFAULT_SETTINGS_NAV_SCROLL = true
 
 /** Configuration schema with documented defaults. */
 export const Config: Schema<ConversationStyleTweaksConfig> = z.object({
@@ -120,6 +138,8 @@ export const Config: Schema<ConversationStyleTweaksConfig> = z.object({
   stableTurnRail: z.boolean().default(DEFAULT_STABLE_TURN_RAIL),
   codeBlockFlushTop: z.boolean().default(DEFAULT_CODE_BLOCK_FLUSH_TOP),
   projectRunningIndicator: z.boolean().default(DEFAULT_PROJECT_RUNNING_INDICATOR),
+  locateCurrentSession: z.boolean().default(DEFAULT_LOCATE_CURRENT_SESSION),
+  settingsNavScroll: z.boolean().default(DEFAULT_SETTINGS_NAV_SCROLL),
 })
 
 /** Configuration after static validation, with every default materialized. */
@@ -138,6 +158,10 @@ export interface ResolvedConversationStyleTweaksConfig {
   codeBlockFlushTop: boolean
   /** Whether the project-running-indicator tweak is enabled. */
   projectRunningIndicator: boolean
+  /** Whether the locate-current-session tweak is enabled. */
+  locateCurrentSession: boolean
+  /** Whether the settings-nav-scroll tweak is enabled. */
+  settingsNavScroll: boolean
 }
 
 /** Resolve a partial config into a fully defaulted value. */
@@ -150,6 +174,8 @@ export function resolveConfig(config: ConversationStyleTweaksConfig = {}): Resol
     stableTurnRail: config.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
     codeBlockFlushTop: config.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
     projectRunningIndicator: config.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
+    locateCurrentSession: config.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,
+    settingsNavScroll: config.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
   }
 }
 

@@ -25,4 +25,8 @@ export interface ResolvedConversationStyleTweaksConfig {
   codeBlockFlushTop: boolean
   /** Whether the project-running-indicator tweak is enabled. */
   projectRunningIndicator: boolean
+  /** Whether the locate-current-session tweak is enabled. */
+  locateCurrentSession: boolean
+  /** Whether the settings-nav-scroll tweak is enabled. */
+  settingsNavScroll: boolean
 }

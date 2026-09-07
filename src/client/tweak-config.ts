@@ -38,6 +38,10 @@ export const DEFAULT_STABLE_TURN_RAIL = true
 export const DEFAULT_CODE_BLOCK_FLUSH_TOP = true
 /** Default state of the project-running-indicator tweak. */
 export const DEFAULT_PROJECT_RUNNING_INDICATOR = true
+/** Default state of the locate-current-session tweak. */
+export const DEFAULT_LOCATE_CURRENT_SESSION = true
+/** Default state of the settings-nav-scroll tweak. */
+export const DEFAULT_SETTINGS_NAV_SCROLL = true
 
 /**
  * Normalize a dialog width value (legacy strings included) to px.
@@ -74,5 +78,7 @@ export function resolveClientConfig(
     stableTurnRail: value?.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
     codeBlockFlushTop: value?.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
     projectRunningIndicator: value?.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
+    locateCurrentSession: value?.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,
+    settingsNavScroll: value?.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
   }
 }
