@@ -35,6 +35,7 @@ import { injectCodeBlockFlushTopStyles } from './tweaks/code-block-flush-top.ts'
 import { setupProjectRunningIndicator } from './tweaks/project-running-indicator.ts'
 import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
 import { setupSettingsNavScroll } from './tweaks/settings-nav-scroll.ts'
+import { setupLegacyStatsLine } from './tweaks/legacy-stats-line.tsx'
 
 const NS = 'style-tweaks'
 const SETTINGS_ROUTE = '/_dsh/style-tweaks/settings'
@@ -51,6 +52,7 @@ const TWEAK_INJECTORS: Record<string, (ctx: ClientContext) => () => void> = {
   'project-running-indicator': setupProjectRunningIndicator,
   'locate-current-session': setupLocateCurrentSession,
   'settings-nav-scroll': setupSettingsNavScroll,
+  'legacy-stats-line': setupLegacyStatsLine,
 }
 
 interface TweaksValue {
@@ -74,6 +76,8 @@ interface TweaksValue {
   locateCurrentSession?: boolean
   /** Whether the settings-nav-scroll tweak is enabled. */
   settingsNavScroll?: boolean
+  /** Whether the legacy-stats-line tweak is enabled. */
+  legacyStatsLine?: boolean
 }
 
 interface ResolvedTweaks {
@@ -86,6 +90,7 @@ interface ResolvedTweaks {
   projectRunningIndicator: boolean
   locateCurrentSession: boolean
   settingsNavScroll: boolean
+  legacyStatsLine: boolean
 }
 
 interface Snapshot {
@@ -133,6 +138,19 @@ const en = {
   'tweak.locateCurrentSession.description': 'Add a "locate" button next to the sidebar search box. Click it to expand the current session\'s workspace and scroll the session into view.',
   'tweak.settingsNavScroll.title': 'Scrollable settings nav',
   'tweak.settingsNavScroll.description': 'Let the settings dialog\'s left menu scroll when its entries outgrow the panel, instead of silently clipping the ones at the bottom.',
+  'tweak.legacyStatsLine.title': 'Legacy stats line',
+  'tweak.legacyStatsLine.description': 'Show the composer stats the way DSH did before 0.1.5: one centered text line under the input box (turns/steps, LLM & tool time, TTFT, speed, tokens, cache hit) instead of the new icon pills. Full line on hover.',
+  'legacyStats.counts': '{turns} turns · {steps} steps',
+  'legacyStats.llm': 'LLM {duration}',
+  'legacyStats.toolCall': 'Tool call {duration}',
+  'legacyStats.ttftAverage': 'TTFT avg {duration}',
+  'legacyStats.tokensPerSecond': '{throughput} tok/s',
+  'legacyStats.cacheHit': 'Cache hit {percent}%',
+  'legacyStats.tokens': 'Input {input} tok · Output {output} tok',
+  'legacyStats.number.thousand': '{value}K',
+  'legacyStats.number.million': '{value}M',
+  'legacyStats.duration.seconds': '{seconds}s',
+  'legacyStats.duration.minutes': '{minutes}m{seconds}s',
 } as const
 
 type LocaleKey = keyof typeof en
@@ -173,6 +191,19 @@ const zh: Record<LocaleKey, string> = {
   'tweak.locateCurrentSession.description': '在侧边栏搜索框旁边添加一个"定位"按钮。点击后展开当前会话所属的工作区目录，并将该会话滚动到侧边栏视口内。',
   'tweak.settingsNavScroll.title': '设置菜单可滚动',
   'tweak.settingsNavScroll.description': '设置项较多时，让设置面板左侧菜单可以上下滚动，而不是把放不下的项直接裁掉。',
+  'tweak.legacyStatsLine.title': '经典统计行',
+  'tweak.legacyStatsLine.description': '以 0.1.5 之前的样式，在输入框下方显示一行居中的文本统计（轮数/步数、模型与工具耗时、首字延迟、输出速度、Token 用量、缓存命中），替代新版图标胶囊；悬停可查看完整内容。',
+  'legacyStats.counts': '{turns} 轮 · {steps} 步',
+  'legacyStats.llm': 'LLM {duration}',
+  'legacyStats.toolCall': '工具调用 {duration}',
+  'legacyStats.ttftAverage': '首 token 平均 {duration}',
+  'legacyStats.tokensPerSecond': '{throughput} tok/s',
+  'legacyStats.cacheHit': '缓存命中 {percent}%',
+  'legacyStats.tokens': '输入 {input} tok · 输出 {output} tok',
+  'legacyStats.number.thousand': '{value}K',
+  'legacyStats.number.million': '{value}M',
+  'legacyStats.duration.seconds': '{seconds}秒',
+  'legacyStats.duration.minutes': '{minutes}分{seconds}秒',
 }
 
 type Translate = (key: LocaleKey) => string
@@ -195,6 +226,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     projectRunningIndicator: value?.projectRunningIndicator ?? true,
     locateCurrentSession: value?.locateCurrentSession ?? true,
     settingsNavScroll: value?.settingsNavScroll ?? true,
+    legacyStatsLine: value?.legacyStatsLine ?? false,
   }
 }
 

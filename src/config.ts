@@ -89,6 +89,17 @@ export interface StyleTweaksConfig {
    * plugins register settings sections).
    */
   settingsNavScroll?: boolean
+  /**
+   * Restore the composer stats display DSH shipped through 0.1.2-rc.1
+   * (`StatsLine`): one centered pipe-separated text line under the composer
+   * card (turn/step counts, LLM & tool wall times, TTFT average, output
+   * speed, cache hit, input/output tokens) with the full line on hover.
+   * 0.1.5-alpha.1 replaced it with icon pills that open dialogs
+   * (`StatsPills`); while this tweak is on, the plugin shadows the shipped
+   * `stats` entry on the `conversation.composer.dock` slot (same id, lower
+   * priority) and the pills give way. Default off: the new pills stay.
+   */
+  legacyStatsLine?: boolean
 }
 
 // ── Column-width constants ───────────────────────────────────────────────
@@ -128,6 +139,8 @@ export const DEFAULT_PROJECT_RUNNING_INDICATOR = true
 export const DEFAULT_LOCATE_CURRENT_SESSION = true
 /** Default: every shipped tweak is on. */
 export const DEFAULT_SETTINGS_NAV_SCROLL = true
+/** Default: off — the legacy stats line is opt-in, the new pills stay. */
+export const DEFAULT_LEGACY_STATS_LINE = false
 
 /** Configuration schema with documented defaults. */
 export const Config: Schema<StyleTweaksConfig> = z.object({
@@ -140,6 +153,7 @@ export const Config: Schema<StyleTweaksConfig> = z.object({
   projectRunningIndicator: z.boolean().default(DEFAULT_PROJECT_RUNNING_INDICATOR),
   locateCurrentSession: z.boolean().default(DEFAULT_LOCATE_CURRENT_SESSION),
   settingsNavScroll: z.boolean().default(DEFAULT_SETTINGS_NAV_SCROLL),
+  legacyStatsLine: z.boolean().default(DEFAULT_LEGACY_STATS_LINE),
 })
 
 /** Configuration after static validation, with every default materialized. */
@@ -162,6 +176,8 @@ export interface ResolvedStyleTweaksConfig {
   locateCurrentSession: boolean
   /** Whether the settings-nav-scroll tweak is enabled. */
   settingsNavScroll: boolean
+  /** Whether the legacy-stats-line tweak is enabled. */
+  legacyStatsLine: boolean
 }
 
 /** Resolve a partial config into a fully defaulted value. */
@@ -176,6 +192,7 @@ export function resolveConfig(config: StyleTweaksConfig = {}): ResolvedStyleTwea
     projectRunningIndicator: config.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
     locateCurrentSession: config.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,
     settingsNavScroll: config.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
+    legacyStatsLine: config.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
   }
 }
 

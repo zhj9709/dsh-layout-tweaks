@@ -63,4 +63,11 @@ export const TWEAKS: readonly TweakDescriptor[] = [
     titleKey: 'tweak.settingsNavScroll.title',
     descriptionKey: 'tweak.settingsNavScroll.description',
   },
+  {
+    id: 'legacy-stats-line',
+    settingKey: 'legacyStatsLine',
+    defaultEnabled: false,
+    titleKey: 'tweak.legacyStatsLine.title',
+    descriptionKey: 'tweak.legacyStatsLine.description',
+  },
 ]
