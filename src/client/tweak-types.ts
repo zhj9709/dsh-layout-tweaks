@@ -31,4 +31,6 @@ export interface ResolvedStyleTweaksConfig {
   settingsNavScroll: boolean
   /** Whether the legacy-stats-line tweak is enabled. */
   legacyStatsLine: boolean
+  /** Whether the pills-cache-hit-decimals tweak is enabled. */
+  pillsCacheHitDecimals: boolean
 }

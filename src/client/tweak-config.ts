@@ -44,6 +44,8 @@ export const DEFAULT_LOCATE_CURRENT_SESSION = true
 export const DEFAULT_SETTINGS_NAV_SCROLL = true
 /** Default state of the legacy-stats-line tweak (off: the host's new pills stay). */
 export const DEFAULT_LEGACY_STATS_LINE = false
+/** Default state of the pills-cache-hit-decimals tweak (off: integer percent, as shipped). */
+export const DEFAULT_PILLS_CACHE_HIT_DECIMALS = false
 
 /**
  * Normalize a dialog width value (legacy strings included) to px.
@@ -83,5 +85,6 @@ export function resolveClientConfig(
     locateCurrentSession: value?.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,
     settingsNavScroll: value?.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
     legacyStatsLine: value?.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
+    pillsCacheHitDecimals: value?.pillsCacheHitDecimals ?? DEFAULT_PILLS_CACHE_HIT_DECIMALS,
   }
 }

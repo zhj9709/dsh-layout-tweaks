@@ -14,10 +14,13 @@
  * Both presentations mount the same way: a `list` entry on the
  * `conversation.composer.dock` slot under the id `stats`. A list cell
  * renders its lowest-priority live entry (see `SlotCore.register`), so
- * re-registering `id: 'stats'` at `priority: -1` shadows the shipped pills
+ * re-registering `id: 'stats'` at `priority: -2` shadows the shipped pills
  * for exactly as long as the registration lives; disposing it hands the
  * cell straight back — no CSS hiding, no DOM patching, and a crashed entry
- * retires itself so the pills reappear.
+ * retires itself so the pills reappear. The `pills-cache-hit-decimals`
+ * tweak shadows the same cell one step higher (`-1`), so with both tweaks
+ * on, this line wins; that row then sits shadowed (unrendered) and takes
+ * the cell back when this tweak is turned off.
  *
  * ## Data plane
  *
@@ -43,16 +46,12 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-session-stats/client'
-import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
+import type {} from '@deepseek-ai/dsh-token-meter/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import { billedInputTokens, formatCacheHitPercent } from './stats-cache-hit.ts'
 
 /** The slot machinery's translate seat for the plugin namespace. */
 type LegacyTranslate = PropsLocale<'style-tweaks'>['t']
-
-/** The three disjoint prompt-side billing buckets. */
-function billedInputTokens(usage: TokenUsageProjection): number {
-  return usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
-}
 
 /**
  * Compact token count: 517 / 12.2K / 1.2M — the shared `number.*` templates,
@@ -76,61 +75,12 @@ function formatDuration(ms: number, t: LegacyTranslate): string {
   return t('legacyStats.duration.minutes', { minutes: Math.floor(whole / 60), seconds: whole % 60 })
 }
 
-/** Tokens per second without the unit: one decimal below 10, integral above. */
+/**
+ * Tokens per second without the unit: one decimal below 10, integral above.
+ */
 function formatTokensPerSecond(tps: number): string {
   const clamped = Math.max(0, tps)
   return clamped >= 10 ? String(Math.round(clamped)) : String(Math.round(clamped * 10) / 10)
-}
-
-/**
- * Display-ready cache-hit share without rounding a partial hit to 100%:
- * integer percentage while it stays below 100, otherwise the minimum
- * decimal precision that still rounds below 100 (a 99.99…% hit keeps its
- * honest `99.9…` tail). Ported verbatim from dsh-client-ui-chat's
- * `token-format.ts` (0.1.2-rc.1); no billed input returns null.
- */
-function formatCacheHitPercent(cacheReadTokens: number, promptTokens: number): string | null {
-  if (promptTokens === 0) return null
-  const missedInputTokens = promptTokens - cacheReadTokens
-  if (missedInputTokens === 0) return '100'
-
-  // Round the read ratio to integer percent units with positive ties up:
-  // binary-search the largest candidate whose (2c-1)-scaled half-open
-  // threshold the numerator reaches.
-  const denominatorQuotient = Math.floor(promptTokens / 200)
-  const denominatorRemainder = promptTokens % 200
-  let lower = 0
-  let upper = 100
-  while (lower < upper) {
-    const candidate = Math.floor((lower + upper + 1) / 2)
-    const factor = candidate * 2 - 1
-    const threshold = factor * denominatorQuotient
-      + Math.ceil(factor * denominatorRemainder / 200)
-    if (cacheReadTokens >= threshold) lower = candidate
-    else upper = candidate - 1
-  }
-  if (lower < 100) return String(lower)
-
-  // The integer rounding would read 100: widen precision until one unit of
-  // the last shown place exceeds the miss, then keep the tail honest.
-  let distinguishingPlaces = 1
-  let scaledDoubleGap = missedInputTokens * 200
-  const denominatorTens = Math.floor(promptTokens / 10)
-  while (scaledDoubleGap <= denominatorTens) {
-    scaledDoubleGap *= 10
-    distinguishingPlaces += 1
-  }
-  const denominatorOnes = promptTokens % 10
-  let roundedLoss = 5
-  for (let loss = 1; loss < 5; loss += 1) {
-    const factor = loss * 2 + 1
-    const threshold = factor * denominatorTens + Math.floor(factor * denominatorOnes / 10)
-    if (scaledDoubleGap <= threshold) {
-      roundedLoss = loss
-      break
-    }
-  }
-  return `99.${'9'.repeat(distinguishingPlaces - 1)}${10 - roundedLoss}`
 }
 
 /** Truncating stats row: the pipe-separated line, with the full text as a hover tooltip. */
@@ -211,7 +161,7 @@ export const LegacyStatsLine = memo(function LegacyStatsLine({ useProjection, t 
   // settled without billing (e.g. every request failed) shows its counts
   // without a zero-token group.
   if (usage !== undefined && (billedInputTokens(usage) > 0 || usage.outputTokens > 0)) {
-    const cacheHit = formatCacheHitPercent(usage.cacheReadTokens, billedInputTokens(usage))
+    const cacheHit = formatCacheHitPercent(usage.cacheReadTokens, billedInputTokens(usage), 0)
     if (cacheHit !== null) groups.push(t('legacyStats.cacheHit', { percent: cacheHit }))
     groups.push(t('legacyStats.tokens', {
       input: formatTokens(billedInputTokens(usage), t),
@@ -250,9 +200,11 @@ function installLegacyStatsStyles(): () => void {
 
 /**
  * Mount the legacy line: inject the row skin, then shadow the shipped
- * `stats` dock entry (same id, lower priority wins the list cell). The
- * `slots.inject` controller re-registers across slot re-declarations
- * (composer remounts, HMR) and its disposer restores the shipped pills.
+ * `stats` dock entry (same id; the lowest live priority in the cell renders,
+ * and `-2` also outranks the pills-cache-hit-decimals row at `-1` when both
+ * tweaks are on). The `slots.inject` controller re-registers across slot
+ * re-declarations (composer remounts, HMR) and its disposer restores the
+ * shipped pills.
  */
 export function setupLegacyStatsLine(ctx: ClientContext): () => void {
   const disposeStyles = installLegacyStatsStyles()
@@ -260,7 +212,7 @@ export function setupLegacyStatsLine(ctx: ClientContext): () => void {
     ctx.slots.register({
       name: 'conversation.composer.dock',
       id: 'stats',
-      priority: -1,
+      priority: -2,
       locale: 'style-tweaks',
     }, LegacyStatsLine))
   return () => {

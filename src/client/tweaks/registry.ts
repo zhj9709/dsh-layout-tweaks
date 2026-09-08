@@ -70,4 +70,11 @@ export const TWEAKS: readonly TweakDescriptor[] = [
     titleKey: 'tweak.legacyStatsLine.title',
     descriptionKey: 'tweak.legacyStatsLine.description',
   },
+  {
+    id: 'pills-cache-hit-decimals',
+    settingKey: 'pillsCacheHitDecimals',
+    defaultEnabled: false,
+    titleKey: 'tweak.pillsCacheHitDecimals.title',
+    descriptionKey: 'tweak.pillsCacheHitDecimals.description',
+  },
 ]

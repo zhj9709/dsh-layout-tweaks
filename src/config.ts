@@ -100,6 +100,16 @@ export interface StyleTweaksConfig {
    * priority) and the pills give way. Default off: the new pills stay.
    */
   legacyStatsLine?: boolean
+  /**
+   * Show the cache-hit share of the NEW composer stats pills (0.1.5's
+   * `StatsPills`) with two decimal places (`87.35%`) instead of DSH's
+   * integer rounding. Implemented by shadowing the shipped `stats` entry on
+   * the `conversation.composer.dock` slot with a faithful re-render of the
+   * pills (dialogs included) over the same projections. Hidden in Settings
+   * while `legacyStatsLine` is on (the legacy line replaces the pills and
+   * owns the cell); both toggles may stay on — the legacy line wins.
+   */
+  pillsCacheHitDecimals?: boolean
 }
 
 // ── Column-width constants ───────────────────────────────────────────────
@@ -141,6 +151,8 @@ export const DEFAULT_LOCATE_CURRENT_SESSION = true
 export const DEFAULT_SETTINGS_NAV_SCROLL = true
 /** Default: off — the legacy stats line is opt-in, the new pills stay. */
 export const DEFAULT_LEGACY_STATS_LINE = false
+/** Default: off — integer cache-hit percent, as shipped. */
+export const DEFAULT_PILLS_CACHE_HIT_DECIMALS = false
 
 /** Configuration schema with documented defaults. */
 export const Config: Schema<StyleTweaksConfig> = z.object({
@@ -154,6 +166,7 @@ export const Config: Schema<StyleTweaksConfig> = z.object({
   locateCurrentSession: z.boolean().default(DEFAULT_LOCATE_CURRENT_SESSION),
   settingsNavScroll: z.boolean().default(DEFAULT_SETTINGS_NAV_SCROLL),
   legacyStatsLine: z.boolean().default(DEFAULT_LEGACY_STATS_LINE),
+  pillsCacheHitDecimals: z.boolean().default(DEFAULT_PILLS_CACHE_HIT_DECIMALS),
 })
 
 /** Configuration after static validation, with every default materialized. */
@@ -178,6 +191,8 @@ export interface ResolvedStyleTweaksConfig {
   settingsNavScroll: boolean
   /** Whether the legacy-stats-line tweak is enabled. */
   legacyStatsLine: boolean
+  /** Whether the pills-cache-hit-decimals tweak is enabled. */
+  pillsCacheHitDecimals: boolean
 }
 
 /** Resolve a partial config into a fully defaulted value. */
@@ -193,6 +208,7 @@ export function resolveConfig(config: StyleTweaksConfig = {}): ResolvedStyleTwea
     locateCurrentSession: config.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,
     settingsNavScroll: config.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
     legacyStatsLine: config.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
+    pillsCacheHitDecimals: config.pillsCacheHitDecimals ?? DEFAULT_PILLS_CACHE_HIT_DECIMALS,
   }
 }
 

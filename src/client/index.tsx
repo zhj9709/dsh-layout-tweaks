@@ -36,6 +36,7 @@ import { setupProjectRunningIndicator } from './tweaks/project-running-indicator
 import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
 import { setupSettingsNavScroll } from './tweaks/settings-nav-scroll.ts'
 import { setupLegacyStatsLine } from './tweaks/legacy-stats-line.tsx'
+import { setupPillsCacheHitDecimals } from './tweaks/pills-cache-hit-decimals.tsx'
 
 const NS = 'style-tweaks'
 const SETTINGS_ROUTE = '/_dsh/style-tweaks/settings'
@@ -53,6 +54,7 @@ const TWEAK_INJECTORS: Record<string, (ctx: ClientContext) => () => void> = {
   'locate-current-session': setupLocateCurrentSession,
   'settings-nav-scroll': setupSettingsNavScroll,
   'legacy-stats-line': setupLegacyStatsLine,
+  'pills-cache-hit-decimals': setupPillsCacheHitDecimals,
 }
 
 interface TweaksValue {
@@ -78,6 +80,8 @@ interface TweaksValue {
   settingsNavScroll?: boolean
   /** Whether the legacy-stats-line tweak is enabled. */
   legacyStatsLine?: boolean
+  /** Whether the pills-cache-hit-decimals tweak is enabled. */
+  pillsCacheHitDecimals?: boolean
 }
 
 interface ResolvedTweaks {
@@ -91,6 +95,7 @@ interface ResolvedTweaks {
   locateCurrentSession: boolean
   settingsNavScroll: boolean
   legacyStatsLine: boolean
+  pillsCacheHitDecimals: boolean
 }
 
 interface Snapshot {
@@ -140,6 +145,8 @@ const en = {
   'tweak.settingsNavScroll.description': 'Let the settings dialog\'s left menu scroll when its entries outgrow the panel, instead of silently clipping the ones at the bottom.',
   'tweak.legacyStatsLine.title': 'Legacy stats line',
   'tweak.legacyStatsLine.description': 'Show the composer stats the way DSH did before 0.1.5: one centered text line under the input box (turns/steps, LLM & tool time, TTFT, speed, tokens, cache hit) instead of the new icon pills. Full line on hover.',
+  'tweak.pillsCacheHitDecimals.title': 'Cache hit with two decimals (pills)',
+  'tweak.pillsCacheHitDecimals.description': 'Show the new stats pills\' cache-hit share with two decimal places (87.35%) instead of integer rounding. Hidden while the legacy stats line is on — that line replaces the pills.',
   'legacyStats.counts': '{turns} turns · {steps} steps',
   'legacyStats.llm': 'LLM {duration}',
   'legacyStats.toolCall': 'Tool call {duration}',
@@ -151,6 +158,26 @@ const en = {
   'legacyStats.number.million': '{value}M',
   'legacyStats.duration.seconds': '{seconds}s',
   'legacyStats.duration.minutes': '{minutes}m{seconds}s',
+  'pills.counts': '{turns} turns {steps} steps',
+  'pills.tokensPerSecond': '{tps} tok/s',
+  'pills.cacheHit': 'Cache hit {percent}%',
+  'pills.dialog.title': 'Session statistics',
+  'pills.dialog.usageTitle': 'Token usage',
+  'pills.dialog.llmTime': 'LLM time',
+  'pills.dialog.toolTime': 'Tool time',
+  'pills.dialog.ttft': 'Avg time to first token (TTFT)',
+  'pills.dialog.speed': 'Tokens per second (TPS)',
+  'pills.turnUsage.count': '{count} tok',
+  'pills.turnUsage.cacheHit': 'Cache hit',
+  'pills.turnUsage.input': 'Uncached input',
+  'pills.turnUsage.cacheRead': 'Cached input',
+  'pills.turnUsage.cacheWrite': 'Cache write',
+  'pills.turnUsage.output': 'Output',
+  'pills.number.thousand': '{value}K',
+  'pills.number.million': '{value}M',
+  'pills.number.groupSeparator': ',',
+  'pills.duration.seconds': '{seconds}s',
+  'pills.duration.minutes': '{minutes}m{seconds}s',
 } as const
 
 type LocaleKey = keyof typeof en
@@ -193,6 +220,8 @@ const zh: Record<LocaleKey, string> = {
   'tweak.settingsNavScroll.description': '设置项较多时，让设置面板左侧菜单可以上下滚动，而不是把放不下的项直接裁掉。',
   'tweak.legacyStatsLine.title': '经典统计行',
   'tweak.legacyStatsLine.description': '以 0.1.5 之前的样式，在输入框下方显示一行居中的文本统计（轮数/步数、模型与工具耗时、首字延迟、输出速度、Token 用量、缓存命中），替代新版图标胶囊；悬停可查看完整内容。',
+  'tweak.pillsCacheHitDecimals.title': '缓存命中两位小数（胶囊）',
+  'tweak.pillsCacheHitDecimals.description': '新版统计胶囊的缓存命中率按两位小数显示（如 87.35%），不再取整。经典统计行开启时本项隐藏（该行已整体替换胶囊）。',
   'legacyStats.counts': '{turns} 轮 · {steps} 步',
   'legacyStats.llm': 'LLM {duration}',
   'legacyStats.toolCall': '工具调用 {duration}',
@@ -204,6 +233,26 @@ const zh: Record<LocaleKey, string> = {
   'legacyStats.number.million': '{value}M',
   'legacyStats.duration.seconds': '{seconds}秒',
   'legacyStats.duration.minutes': '{minutes}分{seconds}秒',
+  'pills.counts': '{turns} 轮 {steps} 步',
+  'pills.tokensPerSecond': '{tps} tok/s',
+  'pills.cacheHit': '缓存命中 {percent}%',
+  'pills.dialog.title': '会话统计',
+  'pills.dialog.usageTitle': 'Token 用量',
+  'pills.dialog.llmTime': '模型用时',
+  'pills.dialog.toolTime': '工具调用用时',
+  'pills.dialog.ttft': '首 token 平均（TTFT）',
+  'pills.dialog.speed': '输出速度（TPS）',
+  'pills.turnUsage.count': '{count} tok',
+  'pills.turnUsage.cacheHit': '缓存命中',
+  'pills.turnUsage.input': '未缓存输入',
+  'pills.turnUsage.cacheRead': '缓存读取',
+  'pills.turnUsage.cacheWrite': '缓存写入',
+  'pills.turnUsage.output': '输出',
+  'pills.number.thousand': '{value}K',
+  'pills.number.million': '{value}M',
+  'pills.number.groupSeparator': ',',
+  'pills.duration.seconds': '{seconds}秒',
+  'pills.duration.minutes': '{minutes}分{seconds}秒',
 }
 
 type Translate = (key: LocaleKey) => string
@@ -227,6 +276,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     locateCurrentSession: value?.locateCurrentSession ?? true,
     settingsNavScroll: value?.settingsNavScroll ?? true,
     legacyStatsLine: value?.legacyStatsLine ?? false,
+    pillsCacheHitDecimals: value?.pillsCacheHitDecimals ?? false,
   }
 }
 
@@ -580,6 +630,10 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
       <section className="cst-panel">
         <div className="cst-section-label">{t('sectionTweaks')}</div>
         {TWEAKS.map(tweak => {
+          // The pills-decimals toggle only makes sense over the shipped pills;
+          // while the legacy line owns the cell, hide it instead of letting a
+          // no-op toggle sit there.
+          if (tweak.id === 'pills-cache-hit-decimals' && resolved.legacyStatsLine) return null
           const enabled = (resolved as unknown as Record<string, boolean>)[tweak.settingKey] ?? tweak.defaultEnabled
           return (
             <div className="cst-field" key={tweak.id}>
