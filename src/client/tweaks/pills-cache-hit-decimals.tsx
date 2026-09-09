@@ -22,8 +22,9 @@
  * Both tweaks shadow the same cell, so the legacy line registers one step
  * lower (`priority: -2`) and wins whenever both are on — the pills row here
  * then sits shadowed (unrendered, zero cost) and takes the cell back the
- * moment the legacy line is turned off. The Settings panel hides this
- * toggle while the legacy line is on.
+ * moment the legacy line is turned off. The toggle stays visible in Settings
+ * either way: the legacy line reads the same flag for its own cache-hit
+ * decimals.
  *
  * Fidelity notes: data rides the same durable projections (`sessionStats`,
  * `tokenUsage`) — no window fold, so without the projection the row renders

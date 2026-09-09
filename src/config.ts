@@ -101,13 +101,12 @@ export interface StyleTweaksConfig {
    */
   legacyStatsLine?: boolean
   /**
-   * Show the cache-hit share of the NEW composer stats pills (0.1.5's
-   * `StatsPills`) with two decimal places (`87.35%`) instead of DSH's
-   * integer rounding. Implemented by shadowing the shipped `stats` entry on
-   * the `conversation.composer.dock` slot with a faithful re-render of the
-   * pills (dialogs included) over the same projections. Hidden in Settings
-   * while `legacyStatsLine` is on (the legacy line replaces the pills and
-   * owns the cell); both toggles may stay on — the legacy line wins.
+   * Show the cache-hit share of the composer stats with two decimal places
+   * (`87.35%`) instead of DSH's integer rounding — whichever presentation
+   * is mounted: the new pills (`StatsPills`, re-rendered by this plugin
+   * with dialogs included) or the legacy text line (`legacyStatsLine`).
+   * The legacy line wins the cell when both toggles are on and renders
+   * with this flag's decimals.
    */
   pillsCacheHitDecimals?: boolean
 }

@@ -43,17 +43,20 @@ const SETTINGS_ROUTE = '/_dsh/style-tweaks/settings'
 
 /**
  * Maps a tweak id to its mount function. Add new tweaks here. Pure-CSS
- * injectors ignore the context; JS-level tweaks (DOM patching driven by app
- * stores) receive it to read services like `sessions` / `workspaces`.
+ * injectors ignore the context and the resolved values; JS-level tweaks
+ * (DOM patching driven by app stores) receive the context to read services
+ * like `sessions` / `workspaces`, and tweaks whose render depends on other
+ * settings read the resolved snapshot (captured at mount — any settings
+ * change remounts every tweak, so the capture never goes stale).
  */
-const TWEAK_INJECTORS: Record<string, (ctx: ClientContext) => () => void> = {
+const TWEAK_INJECTORS: Record<string, (ctx: ClientContext, resolved: ResolvedTweaks) => () => void> = {
   'stable-table': () => injectStableTableStyles(),
   'stable-turn-rail': () => injectStableTurnRailStyles(),
   'code-block-flush-top': () => injectCodeBlockFlushTopStyles(),
   'project-running-indicator': setupProjectRunningIndicator,
   'locate-current-session': setupLocateCurrentSession,
   'settings-nav-scroll': setupSettingsNavScroll,
-  'legacy-stats-line': setupLegacyStatsLine,
+  'legacy-stats-line': (ctx, resolved) => setupLegacyStatsLine(ctx, resolved.pillsCacheHitDecimals),
   'pills-cache-hit-decimals': setupPillsCacheHitDecimals,
 }
 
@@ -145,8 +148,8 @@ const en = {
   'tweak.settingsNavScroll.description': 'Let the settings dialog\'s left menu scroll when its entries outgrow the panel, instead of silently clipping the ones at the bottom.',
   'tweak.legacyStatsLine.title': 'Legacy stats line',
   'tweak.legacyStatsLine.description': 'Show the composer stats the way DSH did before 0.1.5: one centered text line under the input box (turns/steps, LLM & tool time, TTFT, speed, tokens, cache hit) instead of the new icon pills. Full line on hover.',
-  'tweak.pillsCacheHitDecimals.title': 'Cache hit with two decimals (pills)',
-  'tweak.pillsCacheHitDecimals.description': 'Show the new stats pills\' cache-hit share with two decimal places (87.35%) instead of integer rounding. Hidden while the legacy stats line is on — that line replaces the pills.',
+  'tweak.pillsCacheHitDecimals.title': 'Cache hit with two decimals',
+  'tweak.pillsCacheHitDecimals.description': 'Show the composer stats\' cache-hit share with two decimal places (87.35%) instead of integer rounding — applies to the new icon pills and the legacy text line alike, whichever is showing.',
   'legacyStats.counts': '{turns} turns · {steps} steps',
   'legacyStats.llm': 'LLM {duration}',
   'legacyStats.toolCall': 'Tool call {duration}',
@@ -220,8 +223,8 @@ const zh: Record<LocaleKey, string> = {
   'tweak.settingsNavScroll.description': '设置项较多时，让设置面板左侧菜单可以上下滚动，而不是把放不下的项直接裁掉。',
   'tweak.legacyStatsLine.title': '经典统计行',
   'tweak.legacyStatsLine.description': '以 0.1.5 之前的样式，在输入框下方显示一行居中的文本统计（轮数/步数、模型与工具耗时、首字延迟、输出速度、Token 用量、缓存命中），替代新版图标胶囊；悬停可查看完整内容。',
-  'tweak.pillsCacheHitDecimals.title': '缓存命中两位小数（胶囊）',
-  'tweak.pillsCacheHitDecimals.description': '新版统计胶囊的缓存命中率按两位小数显示（如 87.35%），不再取整。经典统计行开启时本项隐藏（该行已整体替换胶囊）。',
+  'tweak.pillsCacheHitDecimals.title': '缓存命中两位小数',
+  'tweak.pillsCacheHitDecimals.description': '缓存命中率按两位小数显示（如 87.35%），不再取整；无论统计信息以新版图标胶囊还是经典文本行展示，均适用。',
   'legacyStats.counts': '{turns} 轮 · {steps} 步',
   'legacyStats.llm': 'LLM {duration}',
   'legacyStats.toolCall': '工具调用 {duration}',
@@ -630,10 +633,6 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
       <section className="cst-panel">
         <div className="cst-section-label">{t('sectionTweaks')}</div>
         {TWEAKS.map(tweak => {
-          // The pills-decimals toggle only makes sense over the shipped pills;
-          // while the legacy line owns the cell, hide it instead of letting a
-          // no-op toggle sit there.
-          if (tweak.id === 'pills-cache-hit-decimals' && resolved.legacyStatsLine) return null
           const enabled = (resolved as unknown as Record<string, boolean>)[tweak.settingKey] ?? tweak.defaultEnabled
           return (
             <div className="cst-field" key={tweak.id}>
@@ -738,7 +737,7 @@ export function apply(ctx: ClientContext): void {
         if (!enabled) continue
         const injector = TWEAK_INJECTORS[tweak.id]
         if (injector === undefined) continue
-        cleanups.push(injector(ctx))
+        cleanups.push(injector(ctx, resolved))
       }
     }
     sync()

@@ -2,8 +2,9 @@
  * dsh-style-tweaks — shared cache-hit formatting for the stats tweaks.
  *
  * Both stats tweaks need the exact prompt-bucket math over the `tokenUsage`
- * projection: the legacy stats line formats at integer precision (0.1.2
- * behavior) and the pills-replacement formats at two decimals. The rounding
+ * projection: the pills-replacement always formats at two decimals, and the
+ * legacy stats line formats at two decimals while `pillsCacheHitDecimals` is
+ * on and at integer precision (0.1.2 behavior) while it is off. The rounding
  * algorithm is ported verbatim from dsh-client-ui-chat's `token-format.ts`
  * (0.1.2-rc.1) and generalized from `0 | 1` to `0 | 1 | 2` decimal places —
  * the hundredths mode changes only the unit scale; the "would round to 100%

@@ -31,6 +31,11 @@
  * session-stats unit) is dropped: without the projection the line renders
  * nothing, matching the old line's "no data, no row" rule.
  *
+ * The cache-hit share follows the `pillsCacheHitDecimals` setting — two
+ * decimals while it is on, DSH's integer rounding while off. The flag is
+ * captured when the tweak mounts; any settings change remounts every tweak
+ * (the live-sync effect), so the line always renders with the current value.
+ *
  * Copy lives in the plugin's own locale namespace (`style-tweaks`,
  * `legacyStats.*` keys) — DSH removed the old `stats.llm` family from its
  * dictionaries in 0.1.5, so the plugin carries its own.
@@ -126,14 +131,26 @@ const StatsRow = memo(function StatsRow({ groups, line }: {
   )
 })
 
-/** Full props of the shadowing dock entry (standard kit + plugin locale seat). */
-type LegacyStatsLineProps = PropsRuntime<'conversation.composer.dock'> & PropsLocale<'style-tweaks'>
+/**
+ * Full props of the shadowing dock entry: the standard kit, the plugin
+ * locale seat, and the registration's injected business face (`twoDecimals`
+ * is the `pillsCacheHitDecimals` setting; see the module doc).
+ */
+type LegacyStatsLineProps = PropsRuntime<'conversation.composer.dock'>
+  & PropsLocale<'style-tweaks'>
+  & { readonly twoDecimals: boolean }
 
 /**
  * The 0.1.2-rc.1 stats line over the durable projections. Renders nothing
  * until a figure exists, and drops a group whole when its data is absent.
+ * `twoDecimals` bakes the cache-hit precision in, arriving through the
+ * entry's inject face (driven by the `pillsCacheHitDecimals` setting).
  */
-export const LegacyStatsLine = memo(function LegacyStatsLine({ useProjection, t }: LegacyStatsLineProps) {
+export const LegacyStatsLine = memo(function LegacyStatsLine({
+  useProjection,
+  t,
+  twoDecimals,
+}: LegacyStatsLineProps) {
   const stats = useProjection('sessionStats')
   const usage = useProjection('tokenUsage')
 
@@ -161,7 +178,7 @@ export const LegacyStatsLine = memo(function LegacyStatsLine({ useProjection, t 
   // settled without billing (e.g. every request failed) shows its counts
   // without a zero-token group.
   if (usage !== undefined && (billedInputTokens(usage) > 0 || usage.outputTokens > 0)) {
-    const cacheHit = formatCacheHitPercent(usage.cacheReadTokens, billedInputTokens(usage), 0)
+    const cacheHit = formatCacheHitPercent(usage.cacheReadTokens, billedInputTokens(usage), twoDecimals ? 2 : 0)
     if (cacheHit !== null) groups.push(t('legacyStats.cacheHit', { percent: cacheHit }))
     groups.push(t('legacyStats.tokens', {
       input: formatTokens(billedInputTokens(usage), t),
@@ -202,11 +219,14 @@ function installLegacyStatsStyles(): () => void {
  * Mount the legacy line: inject the row skin, then shadow the shipped
  * `stats` dock entry (same id; the lowest live priority in the cell renders,
  * and `-2` also outranks the pills-cache-hit-decimals row at `-1` when both
- * tweaks are on). The `slots.inject` controller re-registers across slot
- * re-declarations (composer remounts, HMR) and its disposer restores the
- * shipped pills.
+ * tweaks are on). `twoDecimals` is the `pillsCacheHitDecimals` setting,
+ * passed through the registration's inject face — the live-sync effect
+ * remounts every tweak on any settings change, so the registration (and the
+ * flag with it) always reflects the current value. The `slots.inject`
+ * controller re-registers across slot re-declarations (composer remounts,
+ * HMR) and its disposer restores the shipped pills.
  */
-export function setupLegacyStatsLine(ctx: ClientContext): () => void {
+export function setupLegacyStatsLine(ctx: ClientContext, twoDecimals: boolean): () => void {
   const disposeStyles = installLegacyStatsStyles()
   const disposeShadow = ctx.slots.inject('conversation.composer.dock', () =>
     ctx.slots.register({
@@ -214,6 +234,7 @@ export function setupLegacyStatsLine(ctx: ClientContext): () => void {
       id: 'stats',
       priority: -2,
       locale: 'style-tweaks',
+      inject: () => ({ twoDecimals }),
     }, LegacyStatsLine))
   return () => {
     disposeShadow()
