@@ -90,6 +90,18 @@ export interface StyleTweaksConfig {
    */
   settingsNavScroll?: boolean
   /**
+   * Let a middle mouse click on a right-Sidebar tab chip close that tab
+   * (docked or floating), the way browser tabs behave. The gesture goes
+   * through the host's own `ctx.sidebarRight` close face, so the native
+   * rules stay in force (the guide standing as the sole docked tab cannot
+   * be closed; the last docked tab closes with the column's collapse, as
+   * its close button does). The press itself is also kept away from the
+   * docking kit's drag gesture and from the browser's middle-click
+   * autoscroll, so a held middle button can neither drag nor float a tab.
+   * Host builds without the 0.1.5 right Sidebar leave the tweak inert.
+   */
+  sidebarMiddleClickClose?: boolean
+  /**
    * Restore the composer stats display DSH shipped through 0.1.2-rc.1
    * (`StatsLine`): one centered pipe-separated text line under the composer
    * card (turn/step counts, LLM & tool wall times, TTFT average, output
@@ -159,6 +171,11 @@ export const DEFAULT_PROJECT_RUNNING_INDICATOR = true
 export const DEFAULT_LOCATE_CURRENT_SESSION = true
 /** Default: every shipped tweak is on. */
 export const DEFAULT_SETTINGS_NAV_SCROLL = true
+/**
+ * Default: on — middle-click-to-close is the convention users bring from
+ * every browser tab strip, and the host itself ships no middle-click route.
+ */
+export const DEFAULT_SIDEBAR_MIDDLE_CLICK_CLOSE = true
 /** Default: off — the legacy stats line is opt-in, the new pills stay. */
 export const DEFAULT_LEGACY_STATS_LINE = false
 /** Default: off — integer cache-hit percent, as shipped. */
@@ -177,6 +194,7 @@ export const Config: Schema<StyleTweaksConfig> = z.object({
   projectRunningIndicator: z.boolean().default(DEFAULT_PROJECT_RUNNING_INDICATOR),
   locateCurrentSession: z.boolean().default(DEFAULT_LOCATE_CURRENT_SESSION),
   settingsNavScroll: z.boolean().default(DEFAULT_SETTINGS_NAV_SCROLL),
+  sidebarMiddleClickClose: z.boolean().default(DEFAULT_SIDEBAR_MIDDLE_CLICK_CLOSE),
   legacyStatsLine: z.boolean().default(DEFAULT_LEGACY_STATS_LINE),
   pillsCacheHitDecimals: z.boolean().default(DEFAULT_PILLS_CACHE_HIT_DECIMALS),
   turnSpeedMetrics: z.boolean().default(DEFAULT_TURN_SPEED_METRICS),
@@ -202,6 +220,8 @@ export interface ResolvedStyleTweaksConfig {
   locateCurrentSession: boolean
   /** Whether the settings-nav-scroll tweak is enabled. */
   settingsNavScroll: boolean
+  /** Whether the sidebar middle-click close tweak is enabled. */
+  sidebarMiddleClickClose: boolean
   /** Whether the legacy-stats-line tweak is enabled. */
   legacyStatsLine: boolean
   /** Whether the pills-cache-hit-decimals tweak is enabled. */
@@ -222,6 +242,7 @@ export function resolveConfig(config: StyleTweaksConfig = {}): ResolvedStyleTwea
     projectRunningIndicator: config.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
     locateCurrentSession: config.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,
     settingsNavScroll: config.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
+    sidebarMiddleClickClose: config.sidebarMiddleClickClose ?? DEFAULT_SIDEBAR_MIDDLE_CLICK_CLOSE,
     legacyStatsLine: config.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
     pillsCacheHitDecimals: config.pillsCacheHitDecimals ?? DEFAULT_PILLS_CACHE_HIT_DECIMALS,
     turnSpeedMetrics: config.turnSpeedMetrics ?? DEFAULT_TURN_SPEED_METRICS,

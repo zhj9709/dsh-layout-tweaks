@@ -29,6 +29,8 @@ export interface ResolvedStyleTweaksConfig {
   locateCurrentSession: boolean
   /** Whether the settings-nav-scroll tweak is enabled. */
   settingsNavScroll: boolean
+  /** Whether the sidebar middle-click close tweak is enabled. */
+  sidebarMiddleClickClose: boolean
   /** Whether the legacy-stats-line tweak is enabled. */
   legacyStatsLine: boolean
   /** Whether the pills-cache-hit-decimals tweak is enabled. */

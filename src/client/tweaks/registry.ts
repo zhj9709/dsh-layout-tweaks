@@ -64,6 +64,13 @@ export const TWEAKS: readonly TweakDescriptor[] = [
     descriptionKey: 'tweak.settingsNavScroll.description',
   },
   {
+    id: 'sidebar-middle-click-close',
+    settingKey: 'sidebarMiddleClickClose',
+    defaultEnabled: true,
+    titleKey: 'tweak.sidebarMiddleClickClose.title',
+    descriptionKey: 'tweak.sidebarMiddleClickClose.description',
+  },
+  {
     id: 'legacy-stats-line',
     settingKey: 'legacyStatsLine',
     defaultEnabled: false,

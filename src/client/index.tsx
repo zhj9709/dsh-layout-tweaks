@@ -35,6 +35,7 @@ import { injectCodeBlockFlushTopStyles } from './tweaks/code-block-flush-top.ts'
 import { setupProjectRunningIndicator } from './tweaks/project-running-indicator.ts'
 import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
 import { setupSettingsNavScroll } from './tweaks/settings-nav-scroll.ts'
+import { setupSidebarMiddleClickClose } from './tweaks/sidebar-middle-click-close.ts'
 import { setupLegacyStatsLine } from './tweaks/legacy-stats-line.tsx'
 import { setupPillsCacheHitDecimals } from './tweaks/pills-cache-hit-decimals.tsx'
 import { setupTurnSpeedMetrics } from './tweaks/turn-speed-metrics.tsx'
@@ -57,6 +58,7 @@ const TWEAK_INJECTORS: Record<string, (ctx: ClientContext, resolved: ResolvedTwe
   'project-running-indicator': setupProjectRunningIndicator,
   'locate-current-session': setupLocateCurrentSession,
   'settings-nav-scroll': setupSettingsNavScroll,
+  'sidebar-middle-click-close': setupSidebarMiddleClickClose,
   'legacy-stats-line': (ctx, resolved) => setupLegacyStatsLine(ctx, resolved.pillsCacheHitDecimals),
   'pills-cache-hit-decimals': setupPillsCacheHitDecimals,
   'turn-speed-metrics': setupTurnSpeedMetrics,
@@ -83,6 +85,8 @@ interface TweaksValue {
   locateCurrentSession?: boolean
   /** Whether the settings-nav-scroll tweak is enabled. */
   settingsNavScroll?: boolean
+  /** Whether the sidebar middle-click close tweak is enabled. */
+  sidebarMiddleClickClose?: boolean
   /** Whether the legacy-stats-line tweak is enabled. */
   legacyStatsLine?: boolean
   /** Whether the pills-cache-hit-decimals tweak is enabled. */
@@ -101,6 +105,7 @@ interface ResolvedTweaks {
   projectRunningIndicator: boolean
   locateCurrentSession: boolean
   settingsNavScroll: boolean
+  sidebarMiddleClickClose: boolean
   legacyStatsLine: boolean
   pillsCacheHitDecimals: boolean
   turnSpeedMetrics: boolean
@@ -151,6 +156,8 @@ const en = {
   'tweak.locateCurrentSession.description': 'Add a "locate" button next to the sidebar search box. Click it to expand the current session\'s workspace and scroll the session into view.',
   'tweak.settingsNavScroll.title': 'Scrollable settings nav',
   'tweak.settingsNavScroll.description': 'Let the settings dialog\'s left menu scroll when its entries outgrow the panel, instead of silently clipping the ones at the bottom.',
+  'tweak.sidebarMiddleClickClose.title': 'Middle-click closes sidebar tabs',
+  'tweak.sidebarMiddleClickClose.description': 'Since 0.1.5 the right sidebar is a tabbed panel. Close any of its tabs — docked or floating — with a middle mouse click on the tab, the way browser tabs behave. A held middle button can no longer drag or float a tab, and middle-click autoscroll is suppressed over the strips.',
   'tweak.legacyStatsLine.title': 'Legacy stats line',
   'tweak.legacyStatsLine.description': 'Show the composer stats the way DSH did before 0.1.5: one centered text line under the input box (turns/steps, LLM & tool time, TTFT, speed, tokens, cache hit) instead of the new icon pills. Full line on hover.',
   'tweak.pillsCacheHitDecimals.title': 'Cache hit with two decimals',
@@ -228,6 +235,8 @@ const zh: Record<LocaleKey, string> = {
   'tweak.locateCurrentSession.description': '在侧边栏搜索框旁边添加一个"定位"按钮。点击后展开当前会话所属的工作区目录，并将该会话滚动到侧边栏视口内。',
   'tweak.settingsNavScroll.title': '设置菜单可滚动',
   'tweak.settingsNavScroll.description': '设置项较多时，让设置面板左侧菜单可以上下滚动，而不是把放不下的项直接裁掉。',
+  'tweak.sidebarMiddleClickClose.title': '中键关闭侧边栏标签页',
+  'tweak.sidebarMiddleClickClose.description': '0.1.5 起新增的右侧边栏是标签页面板。开启后，鼠标中键点击任一标签页即可关闭它（浮动面板的标签页同样适用），与浏览器标签页的习惯一致；中键按住时也不会再意外拖动 / 浮出标签，条上的中键自动滚动一并抑制。',
   'tweak.legacyStatsLine.title': '经典统计行',
   'tweak.legacyStatsLine.description': '以 0.1.5 之前的样式，在输入框下方显示一行居中的文本统计（轮数/步数、模型与工具耗时、首字延迟、输出速度、Token 用量、缓存命中），替代新版图标胶囊；悬停可查看完整内容。',
   'tweak.pillsCacheHitDecimals.title': '缓存命中两位小数',
@@ -287,6 +296,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     projectRunningIndicator: value?.projectRunningIndicator ?? true,
     locateCurrentSession: value?.locateCurrentSession ?? true,
     settingsNavScroll: value?.settingsNavScroll ?? true,
+    sidebarMiddleClickClose: value?.sidebarMiddleClickClose ?? true,
     legacyStatsLine: value?.legacyStatsLine ?? false,
     pillsCacheHitDecimals: value?.pillsCacheHitDecimals ?? false,
     turnSpeedMetrics: value?.turnSpeedMetrics ?? false,

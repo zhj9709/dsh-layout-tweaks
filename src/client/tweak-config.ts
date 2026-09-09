@@ -42,6 +42,8 @@ export const DEFAULT_PROJECT_RUNNING_INDICATOR = true
 export const DEFAULT_LOCATE_CURRENT_SESSION = true
 /** Default state of the settings-nav-scroll tweak. */
 export const DEFAULT_SETTINGS_NAV_SCROLL = true
+/** Default state of the sidebar middle-click close tweak (on: browser-tab convention). */
+export const DEFAULT_SIDEBAR_MIDDLE_CLICK_CLOSE = true
 /** Default state of the legacy-stats-line tweak (off: the host's new pills stay). */
 export const DEFAULT_LEGACY_STATS_LINE = false
 /** Default state of the pills-cache-hit-decimals tweak (off: integer percent, as shipped). */
@@ -86,6 +88,7 @@ export function resolveClientConfig(
     projectRunningIndicator: value?.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
     locateCurrentSession: value?.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,
     settingsNavScroll: value?.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
+    sidebarMiddleClickClose: value?.sidebarMiddleClickClose ?? DEFAULT_SIDEBAR_MIDDLE_CLICK_CLOSE,
     legacyStatsLine: value?.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
     pillsCacheHitDecimals: value?.pillsCacheHitDecimals ?? DEFAULT_PILLS_CACHE_HIT_DECIMALS,
     turnSpeedMetrics: value?.turnSpeedMetrics ?? DEFAULT_TURN_SPEED_METRICS,
