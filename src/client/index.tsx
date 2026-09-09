@@ -37,6 +37,7 @@ import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
 import { setupSettingsNavScroll } from './tweaks/settings-nav-scroll.ts'
 import { setupLegacyStatsLine } from './tweaks/legacy-stats-line.tsx'
 import { setupPillsCacheHitDecimals } from './tweaks/pills-cache-hit-decimals.tsx'
+import { setupTurnSpeedMetrics } from './tweaks/turn-speed-metrics.tsx'
 
 const NS = 'style-tweaks'
 const SETTINGS_ROUTE = '/_dsh/style-tweaks/settings'
@@ -58,6 +59,7 @@ const TWEAK_INJECTORS: Record<string, (ctx: ClientContext, resolved: ResolvedTwe
   'settings-nav-scroll': setupSettingsNavScroll,
   'legacy-stats-line': (ctx, resolved) => setupLegacyStatsLine(ctx, resolved.pillsCacheHitDecimals),
   'pills-cache-hit-decimals': setupPillsCacheHitDecimals,
+  'turn-speed-metrics': setupTurnSpeedMetrics,
 }
 
 interface TweaksValue {
@@ -85,6 +87,8 @@ interface TweaksValue {
   legacyStatsLine?: boolean
   /** Whether the pills-cache-hit-decimals tweak is enabled. */
   pillsCacheHitDecimals?: boolean
+  /** Whether the turn-speed-metrics tweak is enabled. */
+  turnSpeedMetrics?: boolean
 }
 
 interface ResolvedTweaks {
@@ -99,6 +103,7 @@ interface ResolvedTweaks {
   settingsNavScroll: boolean
   legacyStatsLine: boolean
   pillsCacheHitDecimals: boolean
+  turnSpeedMetrics: boolean
 }
 
 interface Snapshot {
@@ -150,6 +155,8 @@ const en = {
   'tweak.legacyStatsLine.description': 'Show the composer stats the way DSH did before 0.1.5: one centered text line under the input box (turns/steps, LLM & tool time, TTFT, speed, tokens, cache hit) instead of the new icon pills. Full line on hover.',
   'tweak.pillsCacheHitDecimals.title': 'Cache hit with two decimals',
   'tweak.pillsCacheHitDecimals.description': 'Show the composer stats\' cache-hit share with two decimal places (87.35%) instead of integer rounding — applies to the new icon pills and the legacy text line alike, whichever is showing.',
+  'tweak.turnSpeedMetrics.title': 'Turn speed & TTFT',
+  'tweak.turnSpeedMetrics.description': 'Since 0.1.5, cold sessions no longer rebuild per-token timing, so the turn-time dialog keeps only the wall-clock duration. Refills that dialog with the output speed and TTFT rows (rebuilt from the model stream embedded in the session log) when you click the time pill.',
   'legacyStats.counts': '{turns} turns · {steps} steps',
   'legacyStats.llm': 'LLM {duration}',
   'legacyStats.toolCall': 'Tool call {duration}',
@@ -225,6 +232,8 @@ const zh: Record<LocaleKey, string> = {
   'tweak.legacyStatsLine.description': '以 0.1.5 之前的样式，在输入框下方显示一行居中的文本统计（轮数/步数、模型与工具耗时、首字延迟、输出速度、Token 用量、缓存命中），替代新版图标胶囊；悬停可查看完整内容。',
   'tweak.pillsCacheHitDecimals.title': '缓存命中两位小数',
   'tweak.pillsCacheHitDecimals.description': '缓存命中率按两位小数显示（如 87.35%），不再取整；无论统计信息以新版图标胶囊还是经典文本行展示，均适用。',
+  'tweak.turnSpeedMetrics.title': '轮次速度与首 token 用时',
+  'tweak.turnSpeedMetrics.description': '0.1.5 起冷会话不再重建逐 token 时序，"本轮用时和速度"弹窗只剩总用时。开启后点击用时胶囊时，弹窗会回填输出速度与首 token 用时两行（由会话日志内嵌的模型流重建，历史会话同样生效）。',
   'legacyStats.counts': '{turns} 轮 · {steps} 步',
   'legacyStats.llm': 'LLM {duration}',
   'legacyStats.toolCall': '工具调用 {duration}',
@@ -280,6 +289,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     settingsNavScroll: value?.settingsNavScroll ?? true,
     legacyStatsLine: value?.legacyStatsLine ?? false,
     pillsCacheHitDecimals: value?.pillsCacheHitDecimals ?? false,
+    turnSpeedMetrics: value?.turnSpeedMetrics ?? false,
   }
 }
 

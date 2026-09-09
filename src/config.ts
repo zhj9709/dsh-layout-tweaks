@@ -109,6 +109,17 @@ export interface StyleTweaksConfig {
    * with this flag's decimals.
    */
   pillsCacheHitDecimals?: boolean
+  /**
+   * Rebuild the turn footer's 输出速度 (TPS) and 首 token 用时 (TTFT) — the
+   * two "本轮用时和速度" figures session format v2 (0.1.5) dropped from cold
+   * presentation: the Chat UI no longer replays the model stream embedded in
+   * each durable settlement, so only the wall-clock duration survives a
+   * reload. While this tweak is on, the plugin reads the settlements out of
+   * the session's event window (the documented Conversation-assembly feed)
+   * and shows the two figures in each settled turn's action row. Default
+   * off: the stock footer keeps its shipped shape.
+   */
+  turnSpeedMetrics?: boolean
 }
 
 // ── Column-width constants ───────────────────────────────────────────────
@@ -152,6 +163,8 @@ export const DEFAULT_SETTINGS_NAV_SCROLL = true
 export const DEFAULT_LEGACY_STATS_LINE = false
 /** Default: off — integer cache-hit percent, as shipped. */
 export const DEFAULT_PILLS_CACHE_HIT_DECIMALS = false
+/** Default: off — the turn footer keeps its shipped shape. */
+export const DEFAULT_TURN_SPEED_METRICS = false
 
 /** Configuration schema with documented defaults. */
 export const Config: Schema<StyleTweaksConfig> = z.object({
@@ -166,6 +179,7 @@ export const Config: Schema<StyleTweaksConfig> = z.object({
   settingsNavScroll: z.boolean().default(DEFAULT_SETTINGS_NAV_SCROLL),
   legacyStatsLine: z.boolean().default(DEFAULT_LEGACY_STATS_LINE),
   pillsCacheHitDecimals: z.boolean().default(DEFAULT_PILLS_CACHE_HIT_DECIMALS),
+  turnSpeedMetrics: z.boolean().default(DEFAULT_TURN_SPEED_METRICS),
 })
 
 /** Configuration after static validation, with every default materialized. */
@@ -192,6 +206,8 @@ export interface ResolvedStyleTweaksConfig {
   legacyStatsLine: boolean
   /** Whether the pills-cache-hit-decimals tweak is enabled. */
   pillsCacheHitDecimals: boolean
+  /** Whether the turn-speed-metrics tweak is enabled. */
+  turnSpeedMetrics: boolean
 }
 
 /** Resolve a partial config into a fully defaulted value. */
@@ -208,6 +224,7 @@ export function resolveConfig(config: StyleTweaksConfig = {}): ResolvedStyleTwea
     settingsNavScroll: config.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
     legacyStatsLine: config.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
     pillsCacheHitDecimals: config.pillsCacheHitDecimals ?? DEFAULT_PILLS_CACHE_HIT_DECIMALS,
+    turnSpeedMetrics: config.turnSpeedMetrics ?? DEFAULT_TURN_SPEED_METRICS,
   }
 }
 

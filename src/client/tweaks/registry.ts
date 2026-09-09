@@ -77,4 +77,11 @@ export const TWEAKS: readonly TweakDescriptor[] = [
     titleKey: 'tweak.pillsCacheHitDecimals.title',
     descriptionKey: 'tweak.pillsCacheHitDecimals.description',
   },
+  {
+    id: 'turn-speed-metrics',
+    settingKey: 'turnSpeedMetrics',
+    defaultEnabled: false,
+    titleKey: 'tweak.turnSpeedMetrics.title',
+    descriptionKey: 'tweak.turnSpeedMetrics.description',
+  },
 ]

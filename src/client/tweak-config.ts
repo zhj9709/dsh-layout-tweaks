@@ -46,6 +46,8 @@ export const DEFAULT_SETTINGS_NAV_SCROLL = true
 export const DEFAULT_LEGACY_STATS_LINE = false
 /** Default state of the pills-cache-hit-decimals tweak (off: integer percent, as shipped). */
 export const DEFAULT_PILLS_CACHE_HIT_DECIMALS = false
+/** Default state of the turn-speed-metrics tweak (off: the stock footer keeps its shipped shape). */
+export const DEFAULT_TURN_SPEED_METRICS = false
 
 /**
  * Normalize a dialog width value (legacy strings included) to px.
@@ -86,5 +88,6 @@ export function resolveClientConfig(
     settingsNavScroll: value?.settingsNavScroll ?? DEFAULT_SETTINGS_NAV_SCROLL,
     legacyStatsLine: value?.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
     pillsCacheHitDecimals: value?.pillsCacheHitDecimals ?? DEFAULT_PILLS_CACHE_HIT_DECIMALS,
+    turnSpeedMetrics: value?.turnSpeedMetrics ?? DEFAULT_TURN_SPEED_METRICS,
   }
 }

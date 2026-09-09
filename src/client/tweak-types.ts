@@ -33,4 +33,6 @@ export interface ResolvedStyleTweaksConfig {
   legacyStatsLine: boolean
   /** Whether the pills-cache-hit-decimals tweak is enabled. */
   pillsCacheHitDecimals: boolean
+  /** Whether the turn-speed-metrics tweak is enabled. */
+  turnSpeedMetrics: boolean
 }
