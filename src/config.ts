@@ -21,19 +21,19 @@ export interface StyleTweaksConfig {
   // ── Column-width control (ported from dsh-dialog-width) ──────────────
   /**
    * Conversation column width in px. The plugin's own width input / preset
-   * row reads & writes this field when "plugin width control" is on (see
-   * `usePluginWidth`); when off, the field still mirrors the user's chosen
-   * px value to the shared storage slot so flipping the switch never loses
-   * it. Clamped to [600, 1600] on read.
+   * row reads & writes this field while "plugin width control" is on (see
+   * `usePluginWidth`); the value is kept while the switch is off (the field
+   * is hidden from the panel) so flipping it back on restores the same px.
+   * Clamped to [600, 1600] on read.
    */
   dialogWidth?: number
   /**
    * Whether the plugin's own column-width input owns the conversation width
-   * axis. On (default): the plugin writes `--dsh-chat-user-width` directly
-   * and hides the native 40 px hover handles. Off: the native drag handles
-   * own the axis (clamp(680, col×0.64, 920)) and the plugin's width input
-   * mirrors its value to the shared localStorage so flipping the switch back
-   * on restores the same px.
+   * axis. On: the plugin writes `--dsh-chat-user-width` directly and hides
+   * the native 40 px hover handles. Off (default): the native drag handles
+   * own the axis (clamp(680, col×0.64, 920)) and the width field is hidden
+   * from the settings panel. The last plugin width stays in the field so
+   * flipping the switch back on restores the same px.
    */
   usePluginWidth?: boolean
   /**
@@ -43,6 +43,18 @@ export interface StyleTweaksConfig {
    * opens or the window shrinks, never hugging the edges. Minimum 32 px.
    */
   sideMargin?: number
+  /**
+   * Cap the expanded think (reasoning) body — the text under the 深度思考
+   * disclosure row — at a fixed height and scroll the overflow, so a long
+   * thinking trace stops pushing the rest of the conversation out of view.
+   * Off (default): the body keeps growing with its content, as shipped.
+   */
+  thinkFixedHeight?: boolean
+  /**
+   * Display height in px for the think body while `thinkFixedHeight` is on.
+   * Clamped to [120, 1200] on read.
+   */
+  thinkHeight?: number
 
   // ── CSS tweaks ───────────────────────────────────────────────────────
   /**
@@ -141,15 +153,22 @@ export const MAX_DIALOG_WIDTH = 1600
 /** 748 matches the stock DSH column. */
 export const DEFAULT_DIALOG_WIDTH = 748
 /**
- * Plugin width control defaults to ON: existing settings documents never had
- * this field, so the default must match what users saw before the native
- * handles shipped — the plugin owning the column.
+ * Plugin width control defaults to OFF: DSH's native drag handles own the
+ * column until the user opts in — the stock behavior wins by default.
  */
-export const DEFAULT_USE_PLUGIN_WIDTH = true
+export const DEFAULT_USE_PLUGIN_WIDTH = false
 /** Default side margin in px — 50 gives a comfortable gap on each side. */
 export const DEFAULT_SIDE_MARGIN = 50
 /** Minimum side margin in px — below 32 the gap becomes too tight. */
 export const MIN_SIDE_MARGIN = 32
+/** Default: off — expanded think bodies keep growing with their content. */
+export const DEFAULT_THINK_FIXED_HEIGHT = false
+/** Default think body height in px while the cap is on (≈15 body lines). */
+export const DEFAULT_THINK_HEIGHT = 300
+/** Minimum think body height in px — below this the window is too cramped to read. */
+export const MIN_THINK_HEIGHT = 120
+/** Maximum think body height in px — past this, uncapped growth is the better tool. */
+export const MAX_THINK_HEIGHT = 1200
 /**
  * localStorage slot the native WidthHandle reads/writes; kept here so a
  * future rename of the host key only needs touching one place. We mirror
@@ -188,6 +207,8 @@ export const Config: Schema<StyleTweaksConfig> = z.object({
   dialogWidth: z.number().min(MIN_DIALOG_WIDTH).max(MAX_DIALOG_WIDTH).default(DEFAULT_DIALOG_WIDTH),
   usePluginWidth: z.boolean().default(DEFAULT_USE_PLUGIN_WIDTH),
   sideMargin: z.number().min(MIN_SIDE_MARGIN).default(DEFAULT_SIDE_MARGIN),
+  thinkFixedHeight: z.boolean().default(DEFAULT_THINK_FIXED_HEIGHT),
+  thinkHeight: z.number().min(MIN_THINK_HEIGHT).max(MAX_THINK_HEIGHT).default(DEFAULT_THINK_HEIGHT),
   stableTable: z.boolean().default(DEFAULT_STABLE_TABLE),
   stableTurnRail: z.boolean().default(DEFAULT_STABLE_TURN_RAIL),
   codeBlockFlushTop: z.boolean().default(DEFAULT_CODE_BLOCK_FLUSH_TOP),
@@ -208,6 +229,10 @@ export interface ResolvedStyleTweaksConfig {
   usePluginWidth: boolean
   /** Side margin in px applied to both sides of the conversation column. */
   sideMargin: number
+  /** Whether the think (reasoning) body is capped at a fixed height. */
+  thinkFixedHeight: boolean
+  /** Think body display height in px while `thinkFixedHeight` is on. */
+  thinkHeight: number
   /** Whether the stable-table tweak is enabled. */
   stableTable: boolean
   /** Whether the stable-turn-rail tweak is enabled. */
@@ -236,6 +261,8 @@ export function resolveConfig(config: StyleTweaksConfig = {}): ResolvedStyleTwea
     dialogWidth: resolveDialogWidth(config.dialogWidth),
     usePluginWidth: config.usePluginWidth ?? DEFAULT_USE_PLUGIN_WIDTH,
     sideMargin: config.sideMargin ?? DEFAULT_SIDE_MARGIN,
+    thinkFixedHeight: config.thinkFixedHeight ?? DEFAULT_THINK_FIXED_HEIGHT,
+    thinkHeight: resolveThinkHeight(config.thinkHeight),
     stableTable: config.stableTable ?? DEFAULT_STABLE_TABLE,
     stableTurnRail: config.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
     codeBlockFlushTop: config.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
@@ -261,4 +288,12 @@ export function resolveDialogWidth(value: number | undefined): number {
 export function resolveSideMargin(value: number | undefined): number {
   if (typeof value === 'number') return Math.max(MIN_SIDE_MARGIN, Math.round(value))
   return DEFAULT_SIDE_MARGIN
+}
+
+/** Normalize a think-body height value to px. */
+export function resolveThinkHeight(value: number | undefined): number {
+  if (typeof value === 'number') {
+    return Math.min(MAX_THINK_HEIGHT, Math.max(MIN_THINK_HEIGHT, Math.round(value)))
+  }
+  return DEFAULT_THINK_HEIGHT
 }

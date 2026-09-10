@@ -21,11 +21,19 @@ export const MAX_DIALOG_WIDTH = 1600
 /** Stock DSH column width. */
 export const DEFAULT_DIALOG_WIDTH = 748
 /** Plugin width control default (must match server; see config.ts). */
-export const DEFAULT_USE_PLUGIN_WIDTH = true
+export const DEFAULT_USE_PLUGIN_WIDTH = false
 /** Default side margin in px. */
 export const DEFAULT_SIDE_MARGIN = 50
 /** Minimum side margin in px. */
 export const MIN_SIDE_MARGIN = 32
+/** Default: off — expanded think bodies keep growing with their content. */
+export const DEFAULT_THINK_FIXED_HEIGHT = false
+/** Default think body height in px while the cap is on. */
+export const DEFAULT_THINK_HEIGHT = 300
+/** Minimum think body height in px. */
+export const MIN_THINK_HEIGHT = 120
+/** Maximum think body height in px. */
+export const MAX_THINK_HEIGHT = 1200
 /** localStorage slot the native handle reads. */
 export const CONVERSATION_WIDTH_STORAGE_KEY = 'dsh.conversation.contentWidth'
 
@@ -72,6 +80,17 @@ export function resolveSideMargin(value: number | undefined): number {
 }
 
 /**
+ * Normalize a think-body height value to px.
+ * Must match `resolveThinkHeight` in src/config.ts.
+ */
+export function resolveThinkHeight(value: number | undefined): number {
+  if (typeof value === 'number') {
+    return Math.min(MAX_THINK_HEIGHT, Math.max(MIN_THINK_HEIGHT, Math.round(value)))
+  }
+  return DEFAULT_THINK_HEIGHT
+}
+
+/**
  * Build a fully-defaulted ResolvedStyleTweaksConfig from any
  * partial input. Mirror of `resolveConfig` in src/config.ts.
  */
@@ -82,6 +101,8 @@ export function resolveClientConfig(
     dialogWidth: resolveDialogWidth(value?.dialogWidth),
     usePluginWidth: value?.usePluginWidth ?? DEFAULT_USE_PLUGIN_WIDTH,
     sideMargin: resolveSideMargin(value?.sideMargin),
+    thinkFixedHeight: value?.thinkFixedHeight ?? DEFAULT_THINK_FIXED_HEIGHT,
+    thinkHeight: resolveThinkHeight(value?.thinkHeight),
     stableTable: value?.stableTable ?? DEFAULT_STABLE_TABLE,
     stableTurnRail: value?.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
     codeBlockFlushTop: value?.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,

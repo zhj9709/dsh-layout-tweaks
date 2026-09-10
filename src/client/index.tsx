@@ -22,11 +22,16 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { installConversationWidthStyles } from './conversation-width.ts'
 import {
+  DEFAULT_THINK_FIXED_HEIGHT,
+  DEFAULT_USE_PLUGIN_WIDTH,
   MAX_DIALOG_WIDTH,
+  MAX_THINK_HEIGHT,
   MIN_DIALOG_WIDTH,
   MIN_SIDE_MARGIN,
+  MIN_THINK_HEIGHT,
   resolveDialogWidth,
   resolveSideMargin,
+  resolveThinkHeight,
 } from './tweak-config.ts'
 import { TWEAKS, type TweakDescriptor } from './tweaks/registry.ts'
 import { injectStableTableStyles } from './tweaks/stable-table.ts'
@@ -36,6 +41,7 @@ import { setupProjectRunningIndicator } from './tweaks/project-running-indicator
 import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
 import { setupSettingsNavScroll } from './tweaks/settings-nav-scroll.ts'
 import { setupSidebarMiddleClickClose } from './tweaks/sidebar-middle-click-close.ts'
+import { installThinkingScrollStyles } from './tweaks/thinking-scroll.ts'
 import { setupLegacyStatsLine } from './tweaks/legacy-stats-line.tsx'
 import { setupPillsCacheHitDecimals } from './tweaks/pills-cache-hit-decimals.tsx'
 import { setupTurnSpeedMetrics } from './tweaks/turn-speed-metrics.tsx'
@@ -72,6 +78,10 @@ interface TweaksValue {
   usePluginWidth?: boolean
   /** Side margin in px; minimum 32. */
   sideMargin?: number
+  /** Whether the think (reasoning) body is capped at a fixed height. */
+  thinkFixedHeight?: boolean
+  /** Think body display height in px; clamped to [120, 1200]. */
+  thinkHeight?: number
   // CSS tweaks.
   /** Whether the stable-table tweak is enabled. */
   stableTable?: boolean
@@ -99,6 +109,8 @@ interface ResolvedTweaks {
   dialogWidth: number
   usePluginWidth: boolean
   sideMargin: number
+  thinkFixedHeight: boolean
+  thinkHeight: number
   stableTable: boolean
   stableTurnRail: boolean
   codeBlockFlushTop: boolean
@@ -123,7 +135,7 @@ interface ApiFailure { ok: false; error: { code: string; message: string } }
 const en = {
   nav: 'Style tweaks',
   settingsTitle: 'Style tweaks',
-  settingsIntro: 'Opt-in style tweaks for DSH: precise conversation column-width control (with presets and side margin) plus a set of small fixes for the sidebar and the settings panel. Each toggle applies immediately and persists to your settings document.',
+  settingsIntro: 'Opt-in style tweaks for DSH: precise conversation column-width control (with presets and side margin), a fixed-height scrolling window for the think (reasoning) body, and a set of small fixes for the sidebar and the settings panel. Each toggle applies immediately and persists to your settings document.',
   sectionLayout: 'Layout',
   sectionTweaks: 'Tweaks',
   dialogWidth: 'Dialog width',
@@ -132,11 +144,15 @@ const en = {
   presetWide: 'Wide',
   presetWideXl: 'Extra wide',
   usePluginWidth: 'Plugin width control',
-  usePluginWidthHint: 'When ON, the width input / presets above drive the column and DSH\'s native drag handles are hidden. When OFF, DSH\'s native handles own the column; the width input mirrors their value.',
+  usePluginWidthHint: 'When ON, the width input / presets below drive the column and DSH\'s native drag handles are hidden. When OFF (default), DSH\'s native handles own the column and the width & side-margin settings are hidden; the last values are kept for when you switch back on.',
   usePluginWidthOn: 'On',
   usePluginWidthOff: 'Off',
   sideMargin: 'Side margin',
-  sideMarginHint: 'Whitespace in px kept on each side of the conversation area. The column is clamped to the dialog width and narrows when the sidebar opens or the window shrinks, never hugging the edges. Minimum 32 px.',
+  sideMarginHint: 'Whitespace in px kept on each side of the conversation area while plugin width control is on. The column is clamped to the dialog width and narrows when the sidebar opens or the window shrinks, never hugging the edges. Minimum 32 px.',
+  thinkFixedHeight: 'Fixed think height',
+  thinkFixedHeightHint: 'Cap the expanded think (reasoning) body at a fixed height and scroll the overflow, so a long thinking trace stops pushing the rest of the conversation out of view. Folding the row back to one line keeps working as usual. While a trace is still streaming, the window shows its top and you scroll for the tail.',
+  thinkHeight: 'Think height',
+  thinkHeightHint: 'Height of the fixed think body in px, between 120 and 1200.',
   defaultAction: 'Default',
   applied: 'Applied',
   unavailable: 'Settings unavailable.',
@@ -202,7 +218,7 @@ type LocaleKey = keyof typeof en
 const zh: Record<LocaleKey, string> = {
   nav: '样式调整',
   settingsTitle: '样式调整',
-  settingsIntro: 'DSH 界面的可选样式调整：对话列宽精确控制（含预设与两侧边距），以及侧边栏与设置面板的一组小幅修复。每个开关立即生效并持久化到设置文档。',
+  settingsIntro: 'DSH 界面的可选样式调整：对话列宽精确控制（含预设与两侧边距）、思考内容固定高度滚动，以及侧边栏与设置面板的一组小幅修复。每个开关立即生效并持久化到设置文档。',
   sectionLayout: '布局',
   sectionTweaks: '调整项',
   dialogWidth: '对话框宽度',
@@ -211,11 +227,15 @@ const zh: Record<LocaleKey, string> = {
   presetWide: '稍宽',
   presetWideXl: '更宽',
   usePluginWidth: '插件宽度控制',
-  usePluginWidthHint: '开启时，上方宽度输入 / 预设驱动列宽，并隐藏 DSH 原生的拖拽手柄；关闭时，DSH 原生手柄接管列宽，宽度输入同步显示当前值。',
+  usePluginWidthHint: '开启时，下方宽度输入 / 预设驱动列宽，并隐藏 DSH 原生的拖拽手柄；关闭时（默认），DSH 原生手柄接管列宽，宽度与两侧边距设置一并隐藏，已设置的值会保留，重新开启即恢复。',
   usePluginWidthOn: '开启',
   usePluginWidthOff: '关闭',
   sideMargin: '两侧边距',
-  sideMarginHint: '对话区域两侧保留的空白（px）。列宽被钳制为对话框宽度，侧边栏打开或窗口缩小时内容会收窄，不会贴住边缘。最低 32 px。',
+  sideMarginHint: '插件宽度控制开启时，对话区域两侧保留的空白（px）。列宽被钳制为对话框宽度，侧边栏打开或窗口缩小时内容会收窄，不会贴住边缘。最低 32 px；关闭插件宽度控制后边距不生效，保持 DSH 原生行为。',
+  thinkFixedHeight: '思考内容固定高度',
+  thinkFixedHeightHint: '展开"深度思考"正文时限制为固定高度，超出部分滚动查看，很长的思考不再把后面的回复顶出视野；收起后照旧恢复为一行摘要。思考仍在生成时窗口显示开头，可滚动查看后续内容。',
+  thinkHeight: '思考内容高度',
+  thinkHeightHint: '思考内容的显示高度（px，120–1200）。',
   defaultAction: '默认',
   applied: '已应用',
   unavailable: '设置暂不可用。',
@@ -288,8 +308,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
   return {
     dialogWidth: resolveDialogWidth(value?.dialogWidth),
-    usePluginWidth: value?.usePluginWidth ?? true,
+    usePluginWidth: value?.usePluginWidth ?? DEFAULT_USE_PLUGIN_WIDTH,
     sideMargin: resolveSideMargin(value?.sideMargin),
+    thinkFixedHeight: value?.thinkFixedHeight ?? DEFAULT_THINK_FIXED_HEIGHT,
+    thinkHeight: resolveThinkHeight(value?.thinkHeight),
     stableTable: value?.stableTable ?? true,
     stableTurnRail: value?.stableTurnRail ?? true,
     codeBlockFlushTop: value?.codeBlockFlushTop ?? true,
@@ -520,9 +542,11 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
 
   const [widthDraft, setWidthDraft] = useState<string>(String(resolved.dialogWidth))
   const [marginDraft, setMarginDraft] = useState<string>(String(resolved.sideMargin))
+  const [thinkHeightDraft, setThinkHeightDraft] = useState<string>(String(resolved.thinkHeight))
 
   useEffect(() => { setWidthDraft(String(resolved.dialogWidth)) }, [resolved.dialogWidth])
   useEffect(() => { setMarginDraft(String(resolved.sideMargin)) }, [resolved.sideMargin])
+  useEffect(() => { setThinkHeightDraft(String(resolved.thinkHeight)) }, [resolved.thinkHeight])
 
   const commitDialogWidth = (raw: string): void => {
     setWidthDraft(raw)
@@ -563,6 +587,25 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
     void controller.set('sideMargin', next).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
   }
 
+  const setThinkFixedHeight = (value: boolean): void => {
+    void controller.set('thinkFixedHeight', value).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+  }
+
+  const commitThinkHeight = (raw: string): void => {
+    setThinkHeightDraft(raw)
+    const parsed = Number(raw)
+    if (!Number.isFinite(parsed)) return
+    const clamped = Math.min(MAX_THINK_HEIGHT, Math.max(MIN_THINK_HEIGHT, Math.round(parsed)))
+    setThinkHeightDraft(String(clamped))
+    void controller.set('thinkHeight', clamped).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+  }
+
+  const stepThinkHeight = (delta: number): void => {
+    const next = Math.min(MAX_THINK_HEIGHT, Math.max(MIN_THINK_HEIGHT, resolved.thinkHeight + delta))
+    setThinkHeightDraft(String(next))
+    void controller.set('thinkHeight', next).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+  }
+
   const setTweak = (tweak: TweakDescriptor, value: boolean): void => {
     void controller.set(tweak.settingKey, value).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
   }
@@ -598,56 +641,95 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
             </div>
           </div>
         </div>
-        <div className="cst-field">
-          <div className="cst-field-top">
-            <span className="cst-label">{t('dialogWidth')}<Hint text={t('dialogWidthHint')} /></span>
-            <div className="cst-controls">
-              <div className="cst-stepper">
-                <button type="button" aria-label="−" disabled={!writable || resolved.dialogWidth <= MIN_DIALOG_WIDTH} onClick={() => { stepDialogWidth(-20) }}>−</button>
-                <input
-                  type="number"
-                  min={MIN_DIALOG_WIDTH}
-                  max={MAX_DIALOG_WIDTH}
-                  step={20}
-                  value={widthDraft}
-                  disabled={!writable}
-                  onChange={(event) => { setWidthDraft(event.target.value) }}
-                  onBlur={(event) => { commitDialogWidth(event.target.value) }}
-                  onKeyDown={(event) => { if (event.key === 'Enter') commitDialogWidth((event.target as HTMLInputElement).value) }}
-                />
-                <button type="button" aria-label="+" disabled={!writable || resolved.dialogWidth >= MAX_DIALOG_WIDTH} onClick={() => { stepDialogWidth(20) }}>+</button>
+        {resolved.usePluginWidth ? (
+          <div className="cst-field">
+            <div className="cst-field-top">
+              <span className="cst-label">{t('dialogWidth')}<Hint text={t('dialogWidthHint')} /></span>
+              <div className="cst-controls">
+                <div className="cst-stepper">
+                  <button type="button" aria-label="−" disabled={!writable || resolved.dialogWidth <= MIN_DIALOG_WIDTH} onClick={() => { stepDialogWidth(-20) }}>−</button>
+                  <input
+                    type="number"
+                    min={MIN_DIALOG_WIDTH}
+                    max={MAX_DIALOG_WIDTH}
+                    step={20}
+                    value={widthDraft}
+                    disabled={!writable}
+                    onChange={(event) => { setWidthDraft(event.target.value) }}
+                    onBlur={(event) => { commitDialogWidth(event.target.value) }}
+                    onKeyDown={(event) => { if (event.key === 'Enter') commitDialogWidth((event.target as HTMLInputElement).value) }}
+                  />
+                  <button type="button" aria-label="+" disabled={!writable || resolved.dialogWidth >= MAX_DIALOG_WIDTH} onClick={() => { stepDialogWidth(20) }}>+</button>
+                </div>
+              </div>
+            </div>
+            <div className="cst-presets">
+              <div className="cst-seg">
+                <button type="button" className={resolved.dialogWidth === 880 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyWidthPreset(880) }}>{t('presetWide')} · 880</button>
+                <button type="button" className={resolved.dialogWidth === 1024 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyWidthPreset(1024) }}>{t('presetWideXl')} · 1024</button>
+                <button type="button" className={resolved.dialogWidth === 748 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyWidthPreset(748) }}>{t('presetDefault')} · 748</button>
               </div>
             </div>
           </div>
-          <div className="cst-presets">
-            <div className="cst-seg">
-              <button type="button" className={resolved.dialogWidth === 880 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyWidthPreset(880) }}>{t('presetWide')} · 880</button>
-              <button type="button" className={resolved.dialogWidth === 1024 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyWidthPreset(1024) }}>{t('presetWideXl')} · 1024</button>
-              <button type="button" className={resolved.dialogWidth === 748 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyWidthPreset(748) }}>{t('presetDefault')} · 748</button>
+        ) : null}
+        {resolved.usePluginWidth ? (
+          <div className="cst-field">
+            <div className="cst-field-top">
+              <span className="cst-label">{t('sideMargin')}<Hint text={t('sideMarginHint')} /></span>
+              <div className="cst-controls">
+                <div className="cst-stepper">
+                  <button type="button" aria-label="−" disabled={!writable || resolved.sideMargin <= MIN_SIDE_MARGIN} onClick={() => { stepSideMargin(-4) }}>−</button>
+                  <input
+                    type="number"
+                    min={MIN_SIDE_MARGIN}
+                    step={4}
+                    value={marginDraft}
+                    disabled={!writable}
+                    onChange={(event) => { setMarginDraft(event.target.value) }}
+                    onBlur={(event) => { commitSideMargin(event.target.value) }}
+                    onKeyDown={(event) => { if (event.key === 'Enter') commitSideMargin((event.target as HTMLInputElement).value) }}
+                  />
+                  <button type="button" aria-label="+" disabled={!writable} onClick={() => { stepSideMargin(4) }}>+</button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
         <div className="cst-field">
           <div className="cst-field-top">
-            <span className="cst-label">{t('sideMargin')}<Hint text={t('sideMarginHint')} /></span>
+            <span className="cst-label">{t('thinkFixedHeight')}<Hint text={t('thinkFixedHeightHint')} /></span>
             <div className="cst-controls">
-              <div className="cst-stepper">
-                <button type="button" aria-label="−" disabled={!writable || resolved.sideMargin <= MIN_SIDE_MARGIN} onClick={() => { stepSideMargin(-4) }}>−</button>
-                <input
-                  type="number"
-                  min={MIN_SIDE_MARGIN}
-                  step={4}
-                  value={marginDraft}
-                  disabled={!writable}
-                  onChange={(event) => { setMarginDraft(event.target.value) }}
-                  onBlur={(event) => { commitSideMargin(event.target.value) }}
-                  onKeyDown={(event) => { if (event.key === 'Enter') commitSideMargin((event.target as HTMLInputElement).value) }}
-                />
-                <button type="button" aria-label="+" disabled={!writable} onClick={() => { stepSideMargin(4) }}>+</button>
+              <div className="cst-seg">
+                <button type="button" className={resolved.thinkFixedHeight ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { setThinkFixedHeight(true) }}>{t('tweakOn')}</button>
+                <button type="button" className={!resolved.thinkFixedHeight ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { setThinkFixedHeight(false) }}>{t('tweakOff')}</button>
               </div>
             </div>
           </div>
         </div>
+        {resolved.thinkFixedHeight ? (
+          <div className="cst-field">
+            <div className="cst-field-top">
+              <span className="cst-label">{t('thinkHeight')}<Hint text={t('thinkHeightHint')} /></span>
+              <div className="cst-controls">
+                <div className="cst-stepper">
+                  <button type="button" aria-label="−" disabled={!writable || resolved.thinkHeight <= MIN_THINK_HEIGHT} onClick={() => { stepThinkHeight(-20) }}>−</button>
+                  <input
+                    type="number"
+                    min={MIN_THINK_HEIGHT}
+                    max={MAX_THINK_HEIGHT}
+                    step={20}
+                    value={thinkHeightDraft}
+                    disabled={!writable}
+                    onChange={(event) => { setThinkHeightDraft(event.target.value) }}
+                    onBlur={(event) => { commitThinkHeight(event.target.value) }}
+                    onKeyDown={(event) => { if (event.key === 'Enter') commitThinkHeight((event.target as HTMLInputElement).value) }}
+                  />
+                  <button type="button" aria-label="+" disabled={!writable || resolved.thinkHeight >= MAX_THINK_HEIGHT} onClick={() => { stepThinkHeight(20) }}>+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="cst-panel">
@@ -721,7 +803,7 @@ export function apply(ctx: ClientContext): void {
     let widthController: ReturnType<typeof installConversationWidthStyles> | undefined
     const sync = (): void => {
       const value = controller.getSnapshot().value
-      const usePlugin = value?.usePluginWidth ?? true
+      const usePlugin = value?.usePluginWidth ?? DEFAULT_USE_PLUGIN_WIDTH
       const width = resolveDialogWidth(value?.dialogWidth)
       const sideMargin = resolveSideMargin(value?.sideMargin)
       if (usePlugin) {
@@ -758,6 +840,11 @@ export function apply(ctx: ClientContext): void {
         const injector = TWEAK_INJECTORS[tweak.id]
         if (injector === undefined) continue
         cleanups.push(injector(ctx, resolved))
+      }
+      // Layout-section feature with a numeric parameter (like the width axis
+      // above): not a registry boolean, so it mounts outside the TWEAKS loop.
+      if (resolved.thinkFixedHeight) {
+        cleanups.push(installThinkingScrollStyles(resolved.thinkHeight))
       }
     }
     sync()

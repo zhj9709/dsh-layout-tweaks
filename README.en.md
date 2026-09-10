@@ -8,9 +8,10 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) web 
 
 ### Layout
 
-- **Plugin width control (default on)** — when ON, the plugin's width input / presets drive the conversation column and DSH's native drag handles are hidden; when OFF, DSH's native handles own the column and the width input mirrors their value.
-- **Dialog width** — any value between 600 and 1600 px; includes presets 748 (default) / 880 (Wide) / 1024 (Extra wide).
-- **Side margin** — whitespace in px kept on each side of the conversation area. The column is clamped to the dialog width and narrows when the sidebar opens or the window shrinks, never hugging the edges. Minimum 32 px.
+- **Plugin width control (default off)** — when ON, the plugin's width input / presets drive the conversation column and DSH's native drag handles are hidden; when OFF (default), DSH's native handles own the column and the dialog-width setting is hidden. The last width is kept, so switching back on restores it.
+- **Dialog width** — any value between 600 and 1600 px; includes presets 748 (default) / 880 (Wide) / 1024 (Extra wide). Shown only while plugin width control is on.
+- **Side margin** — whitespace in px kept on each side of the conversation area while plugin width control is on. The column is clamped to the dialog width and narrows when the sidebar opens or the window shrinks, never hugging the edges. Minimum 32 px. Shown only while plugin width control is on; when it is off, the margin does not apply and DSH's native behavior stands.
+- **Fixed think height (default off)** — caps the expanded think (reasoning) body at a fixed height (default 300 px, adjustable 120–1200) and scrolls the overflow, so a long thinking trace stops pushing the rest of the conversation out of view; while a trace is still streaming, the window shows its top and you scroll for the tail. The wheel chains naturally: when the body hits its top/bottom edge or its content fits the window, the wheel scrolls the conversation instead. Folding the row back to one line keeps working as usual. The window gets an always-visible 4px thin scrollbar (same as the settings nav), with a breathing gap between text and bar.
 
 ### Tweaks
 
@@ -28,9 +29,11 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) web 
 ```yaml
 style-tweaks:
   # Layout
-  usePluginWidth: true             # default true; false hands the column back to native handles
-  dialogWidth: 748                 # 600–1600 px
-  sideMargin: 50                   # ≥ 32 px
+  usePluginWidth: false            # default false; true lets the plugin input/presets own the column
+  dialogWidth: 748                 # 600–1600 px; shown/effective only while usePluginWidth is on
+  sideMargin: 50                   # ≥ 32 px; shown/effective only while usePluginWidth is on
+  thinkFixedHeight: false          # default false; true caps the think body at a fixed height and scrolls it
+  thinkHeight: 300                 # 120–1200 px; shown/effective only while thinkFixedHeight is on
   # Tweaks
   stableTable: true                # default true; false disables the tweak
   stableTurnRail: true             # default true; false disables the tweak
