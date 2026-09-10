@@ -29,16 +29,21 @@
  * the clicked footer to the observer, because a portaled panel cannot reach
  * its footer through `closest()`.
  *
- * ## Why the card is pre-shifted
+ * ## Why the card is pre-lifted
  *
  * `useAnchoredPosition` measures the panel in the mount commit (one row) and
  * repositions through a `ResizeObserver` → `setState`, whose render lands in
  * a task AFTER the next paint: growing the panel by two rows would otherwise
  * paint one frame at the stale `top` (48 px too low) before snapping up —
- * the flash this tweak shipped with. After appending the rows, the refill
- * shifts the fixed-positioned card up by the added height in the same
- * microtask, so the first paint is already at the final position and the
- * host's own reposition later writes the identical value.
+ * the flash this tweak shipped with. The refill therefore lifts the card by
+ * the added height in the same microtask, which is exactly the value the
+ * host's own reposition later computes (the dialog hangs from the trigger's
+ * top edge, so its bottom edge stays put) — the first paint is already final
+ * and the host's write becomes a no-op. Hiding the card until the host
+ * repainted was tried and rejected: it turns a correct instant open into a
+ * visible late pop for every turn. The shift is skipped when it would push
+ * the card above the viewport, the one case where the host keeps a clamped
+ * `top`.
  *
  * The panel is found by its stable `data-turn-time-details` marker, and the
  * rows are `<dt>/<dd>` pairs after the duration row — the dialog's own
@@ -106,6 +111,25 @@ function fixedCardOf(panel: HTMLElement): HTMLElement | null {
     element = element.parentElement
   }
   return null
+}
+
+/**
+ * Lift the card by the height the appended rows added, so its first paint is
+ * already at the final position. The dialog hangs from the trigger's top edge
+ * (`stat-dialog`: `side: 'top'`), so keeping the card's bottom edge fixed is
+ * exactly what the host's own `place()` computes for the taller panel — it
+ * only lands through `ResizeObserver` → `setState` one paint later, which is
+ * the frame this pre-shift removes. The only case where the host would not
+ * move the card is a placement clamped against the viewport (it then keeps
+ * the clamped `top`); the shift is skipped when it would push the card past
+ * the viewport's top edge, which is that case.
+ */
+function preLiftCard(card: HTMLElement | null, beforeHeight: number, beforeTop: number): void {
+  if (card === null) return
+  const delta = card.offsetHeight - beforeHeight
+  if (delta <= 0) return
+  const target = beforeTop - delta
+  if (target >= 0) card.style.top = `${Math.round(target)}px`
 }
 
 /**
@@ -179,17 +203,14 @@ function createTurnSpeedMetrics(ctx: ClientContext) {
         )
         const missing = rows.filter(([label]) => !existingLabels.has(label))
         if (missing.length === 0) return
-        // The card sits above the pill (side 'top') and was measured with one
-        // row; appending two more would paint one frame at the stale `top`
-        // before the host's deferred reposition lands. Capture the geometry,
-        // append, then lift the card by the added height in this same
-        // microtask — the first paint lands at the final position, and the
-        // host's own reposition later writes the identical value.
-        const beforeHeight = panel.offsetHeight
+        // The card hangs above the pill and was measured with the one-row
+        // panel; appending two more rows would paint this next frame at that
+        // stale `top` and only then snap up. Capture the card's geometry,
+        // append, and lift it in the same microtask so the first paint is
+        // already final (see `preLiftCard`).
         const card = fixedCardOf(panel)
-        const beforeTop = card === null ? null : card.getBoundingClientRect().top
-        const growsUp =
-          card !== null && card.getBoundingClientRect().bottom <= footer.getBoundingClientRect().top + 1
+        const beforeHeight = card === null ? 0 : card.offsetHeight
+        const beforeTop = card === null ? 0 : card.getBoundingClientRect().top
         // Insert after the duration row (the grid's first dt/dd pair), in
         // 0.1.2's order: duration, speed, TTFT.
         const insertBefore = panel.children[2] ?? null
@@ -201,10 +222,7 @@ function createTurnSpeedMetrics(ctx: ClientContext) {
           panel.insertBefore(dt, insertBefore)
           panel.insertBefore(dd, insertBefore)
         }
-        const delta = panel.offsetHeight - beforeHeight
-        if (card !== null && beforeTop !== null && delta > 0 && growsUp) {
-          card.style.top = `${Math.round(beforeTop) - delta}px`
-        }
+        preLiftCard(card, beforeHeight, beforeTop)
       }
       refills.set(footer, refill)
       ensureSharedObserver()
