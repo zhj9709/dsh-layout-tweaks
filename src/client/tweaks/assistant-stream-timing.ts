@@ -26,10 +26,10 @@
  * summed output tokens by summed decode wall time over steps carrying both.
  * Only steps whose settlement stream actually contains a token contribute.
  *
- * Everything reads structurally: the plugin typechecks against
- * 0.1.2-rc.1, whose event vocabulary predates the v2 settlements, so the
- * window entries and settlement payloads are narrowed through local
- * structural views instead of the host's event types.
+ * Everything reads structurally: the window entries arrive as opaque host
+ * objects (this module imports no host event types), so the entries and
+ * their settlement payloads are narrowed through local structural views
+ * instead of the host's event types.
  *
  * @module dsh-style-tweaks/client/tweaks/assistant-stream-timing
  */

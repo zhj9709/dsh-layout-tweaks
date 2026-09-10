@@ -60,9 +60,9 @@ import { billedInputTokens, formatCacheHitPercent } from './stats-cache-hit.ts'
 type PillsTranslate = PropsLocale<'style-tweaks'>['t']
 
 /**
- * The gauge icon the shipped pills use (primitives 0.1.3+; the plugin
- * typechecks against 0.1.2-rc.1, where it does not exist yet). Looked up on
- * the host's primitives at runtime; the clock icon is the typed fallback.
+ * The gauge icon the shipped pills use. Primitives only gained it in 0.1.3,
+ * so it is looked up on the host's primitives at runtime; the clock icon
+ * stands in on hosts that predate it.
  */
 const TimePillIcon = (dshPrimitives as { IconGaugeOutline16?: ComponentType }).IconGaugeOutline16
   ?? IconClockOutline16
