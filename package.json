@@ -85,7 +85,7 @@
     "react-dom": "^18.2.0"
   },
   "peerDependenciesMeta": {
-    "cordis": {
+    "@deepseek-ai/cordis": {
       "optional": true
     }
   },
