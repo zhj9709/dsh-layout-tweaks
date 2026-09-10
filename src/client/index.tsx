@@ -21,6 +21,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { installConversationWidthStyles } from './conversation-width.ts'
+import { setupSettingsNavIcon } from './settings-nav-icon.ts'
 import {
   DEFAULT_THINK_FIXED_HEIGHT,
   DEFAULT_USE_PLUGIN_WIDTH,
@@ -789,6 +790,18 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(installBaseStyles, 'dsh-style-tweaks: base styles')
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'dsh-style-tweaks: locale')
   const t = ctx.locale.bind(NS)
+
+  // Permanent chrome for this plugin's OWN Settings entry — not a tweak, so
+  // it lives outside the TWEAKS loop and has no setting: DSH picks the rail
+  // glyph from a hard-coded table that special-cases only `models` /
+  // `agent-presets` / `plugins`, and the `settings.section` registration
+  // options carry no icon field, so every other section (this one included)
+  // is drawn with the same settings gear. The glyph is therefore swapped in
+  // the DOM for as long as the plugin is loaded; see `settings-nav-icon.ts`.
+  ctx.effect(
+    () => setupSettingsNavIcon(() => t('nav')),
+    'dsh-style-tweaks: settings nav icon',
+  )
 
   const controller = new SettingsClient()
 

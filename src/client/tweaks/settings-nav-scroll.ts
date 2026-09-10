@@ -158,7 +158,12 @@
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 
-const NAV_LIST_SELECTOR = 'div[role="dialog"][aria-modal="true"] > nav > [class*="_navList"]'
+/**
+ * The dialog's left rail list. Exported because the rail is not this tweak's
+ * private surface: `settings-nav-icon.ts` matches cells inside the same list,
+ * and the two must never drift apart.
+ */
+export const NAV_LIST_SELECTOR = 'div[role="dialog"][aria-modal="true"] > nav > [class*="_navList"]'
 /** Class the scroll driver toggles to reveal the thumb. Lives on the list itself. */
 const SHOW_CLASS = 'cst-nav-scroll-show'
 /** Overlay-bar idle delay: fade out this long after the last scroll event. */
