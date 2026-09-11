@@ -39,19 +39,20 @@
  *     replacement occupies the same 16px slot and the label keeps its 8px
  *     gap — the rail's metrics are byte-identical to stock.
  *
- * ## Sizing (matched to the gear it replaces)
+ * ## Size and weight (matched to the gear it replaces)
  *
  * Measured ink extents on a 16 grid: gear 14.95 × 15.36, `IconDataOutline16`
  * 13.94 × 14.47, `IconPersonalizationOutline16` 13.41 × 13.40. A glyph that
  * is not in that band reads as foreign next to its neighbours, so the palette
  * outline — drawn on the 16 grid by hand (see `PALETTE_INNER`) — is scaled by
- * `ICON_SCALE` until its inked diameter lands at 14.90:
+ * `ICON_SCALE` until its inked diameter lands at 15.05:
  *
- *   13.3333 (outline geometry) × 1.0353 + 1.1 (stroke) = 14.90
+ *   13.3333 (outline geometry) × 1.0353 + 1.25 (stroke) = 15.05
  *
- * The stroke is divided by the same factor, so the rendered weight stays 1.1
- * — the weight the ic_ds_* set uses — while `ICON_SCALE` alone controls the
- * size. The ink centre stays at (8, 8) and the element stays `16 × 16` with
+ * Size and weight are independent dials: the stroke is divided by the same
+ * factor and multiplied back by the group transform, so `STROKE_WIDTH` is the
+ * rendered weight while `ICON_SCALE` alone controls the diameter. The ink
+ * centre stays at (8, 8) and the element stays `16 × 16` with
  * `viewBox="0 0 16 16"`, i.e. exactly the original's box, so nothing shifts.
  *
  * ## (Re)mounting
@@ -89,14 +90,19 @@ const HIDDEN_ATTR = 'data-cst-nav-icon-hidden'
 /** SVG namespace for the replacement element. */
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-/** Nominal stroke weight of DSH's 16px icon set. */
-const STROKE_WIDTH = 1.1
+/**
+ * Rendered stroke weight of the palette outline. DSH's own nav glyphs render
+ * at 1, but they are dense shapes; a bare round outline lays down far less ink
+ * per unit of length, so 1 reads lighter than its neighbours. 1.25 is the
+ * value that balances by eye — see the size note above.
+ */
+const STROKE_WIDTH = 1.25
 
 /**
  * Scale applied to the hand-drawn outline so the palette's inked diameter
- * matches the gear it replaces (14.90 vs. 14.95). Above ≈1.11 the ink would
- * clip against the 16 box; the stroke is compensated, so this is a pure size
- * dial — 1.0 renders the outline at its drawn 14.43.
+ * matches the gear it replaces (15.05 vs. 14.95). Above ≈1.10 the ink would
+ * clip against the 16 box; the stroke is divided by this factor, so this is a
+ * pure size dial — 1.0 renders the outline at its drawn 14.58.
  */
 const ICON_SCALE = 1.0353
 
