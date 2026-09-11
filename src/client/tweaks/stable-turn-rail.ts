@@ -39,11 +39,17 @@
  *
  *   • `[data-chat-flow]` — the chat column (stable attribute, hardcoded in
  *     ChatView.tsx).
- *   • `:has(> * > nav[aria-label="Turn navigation"], > * > nav[aria-label="轮次导航"])`
- *     — the chat scroll container, identified as the only element that has
- *     the rail nav as a grandchild and the chat column as a direct child.
- *     The two aria-label values cover DSH's shipped en / zh dictionaries
- *     (TurnNavigator.tsx → `t('chat.turnNavigation.label')`).
+ *   • `:has(> * > nav)` — the rail rides two levels down (scrollport > slot >
+ *     `nav`, per TurnNavigator.tsx), so the chat scroll container is the only
+ *     element that has the chat column as a direct child AND a grandchild
+ *     `<nav>`. The two `:has()` calls stay SIBLINGS: `:has()` may not be
+ *     nested inside another `:has()` (the spec forbids it and the browser
+ *     drops the whole rule), so the two conditions are separate pseudo-classes
+ *     on the same compound selector rather than one wrapping the other.
+ *
+ * The `nav` element is matched structurally, never through its `aria-label`:
+ * that label is `t('chat.turnNavigation.label')`, so pinning the shipped en /
+ * zh strings would silently stop matching on any other locale.
  *
  * No CSS-module class names are referenced, so the fix stays correct across
  * DSH builds that re-hash module class names.
@@ -54,7 +60,7 @@ const STABLE_TURN_RAIL_CSS = `
    that also holds the turn-rail slot as a grandchild. Removing its top
    padding keeps the sticky slot's natural position aligned with the
    scrollport's visible top, so the rail never "drops" near scrollTop = 0. */
-:has(> * > nav[aria-label="Turn navigation"], > * > nav[aria-label="轮次导航"]):has(> [data-chat-flow]) {
+:has(> [data-chat-flow]):has(> * > nav) {
   padding-top: 0 !important;
 }
 /* Push the 16px that used to live on the container down into the chat
