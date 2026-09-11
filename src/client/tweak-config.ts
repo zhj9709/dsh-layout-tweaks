@@ -42,6 +42,8 @@ export const CONVERSATION_WIDTH_STORAGE_KEY = 'dsh.conversation.contentWidth'
 export const DEFAULT_STABLE_TABLE = true
 /** Default state of the stable-turn-rail tweak. */
 export const DEFAULT_STABLE_TURN_RAIL = true
+/** Default state of the keep-turn-rail tweak (off: the host's 900px container query stands). */
+export const DEFAULT_KEEP_TURN_RAIL = false
 /** Default state of the code-block-flush-top tweak. */
 export const DEFAULT_CODE_BLOCK_FLUSH_TOP = true
 /** Default state of the project-running-indicator tweak. */
@@ -124,6 +126,7 @@ export function resolveClientConfig(
     thinkHeight: resolveThinkHeight(value?.thinkHeight),
     stableTable: value?.stableTable ?? DEFAULT_STABLE_TABLE,
     stableTurnRail: value?.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
+    keepTurnRail: value?.keepTurnRail ?? DEFAULT_KEEP_TURN_RAIL,
     codeBlockFlushTop: value?.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
     projectRunningIndicator: value?.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
     locateCurrentSession: value?.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,

@@ -36,6 +36,13 @@ export const TWEAKS: readonly TweakDescriptor[] = [
     descriptionKey: 'tweak.stableTurnRail.description',
   },
   {
+    id: 'keep-turn-rail',
+    settingKey: 'keepTurnRail',
+    defaultEnabled: false,
+    titleKey: 'tweak.keepTurnRail.title',
+    descriptionKey: 'tweak.keepTurnRail.description',
+  },
+  {
     id: 'code-block-flush-top',
     settingKey: 'codeBlockFlushTop',
     defaultEnabled: true,

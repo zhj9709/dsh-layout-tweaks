@@ -18,6 +18,7 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) web 
 
 - **Stable table layout (default on)** — locks table layout on hover so surrounding content does not reflow ("text jumps when I hover a table").
 - **Stable turn-navigation rail (default on)** — keeps the turn-navigation rail at a stable position when scrolling up past the first message into the system prompt area (no longer drops by ~16 px).
+- **Always show turn navigation (default off)** — DSH hides the turn-navigation rail once the chat column's content box reaches 900 px (a container query in `TurnNavigator.module.css` measured against the chat scrollport). Widening the right sidebar is exactly what triggers it: the center column may be squeezed down to 400 px, so the rail disappears over almost the panel's whole usable range. With this ON the rail stays at every chat width; at narrow widths it sits in the scrollport's right gutter and its hover preview covers part of the transcript.
 - **Flush code-block top (default on)** — removes the 16 px gap above highlighted code blocks so the code sits flush with the preceding paragraph, list item, or heading.
 - **Project running indicator (default on)** — shows the conversation title's animated running dot on the right side of each project directory in the sidebar, so a running conversation stays visible even when its group is collapsed.
 - **Locate current session (default on)** — adds a "locate" button to the left of the native search button in the sidebar's "Workspaces" section header. Clicking it expands the current session's workspace directory (if collapsed) and its "Show {n} more sessions" overflow, then scrolls the session into the sidebar's visible area. Disabled with the tooltip "Open a session first" when no session is open.
@@ -40,6 +41,7 @@ style-tweaks:
   # Tweaks
   stableTable: true                # default true; false disables the tweak
   stableTurnRail: true             # default true; false disables the tweak
+  keepTurnRail: false              # default false; true keeps the turn-navigation rail at every chat width
   codeBlockFlushTop: true          # default true; false disables the tweak
   projectRunningIndicator: true    # default true; false disables the tweak
   locateCurrentSession: true       # default true; false hides the sidebar locate button

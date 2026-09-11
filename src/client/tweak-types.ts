@@ -25,6 +25,8 @@ export interface ResolvedStyleTweaksConfig {
   stableTable: boolean
   /** Whether the stable-turn-rail tweak is enabled. */
   stableTurnRail: boolean
+  /** Whether the keep-turn-rail tweak is enabled. */
+  keepTurnRail: boolean
   /** Whether the code-block-flush-top tweak is enabled. */
   codeBlockFlushTop: boolean
   /** Whether the project-running-indicator tweak is enabled. */

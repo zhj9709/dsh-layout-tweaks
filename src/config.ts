@@ -90,6 +90,18 @@ export interface StyleTweaksConfig {
    */
   stableTurnRail?: boolean
   /**
+   * Keep DSH's turn-navigation rail visible after the right Sidebar is
+   * widened far enough to hide it. The host's `TurnNavigator.module.css`
+   * hides the rail with `@container (max-width:900px)` measured against the
+   * chat scrollport's content box; `ui-layout` lets a wide right panel
+   * squeeze the center column down to 400px, so the rail disappears over
+   * almost the panel's whole usable range. On: the rail stays at every chat
+   * width (at narrow widths it sits in the scrollport gutter and its hover
+   * preview covers part of the transcript). Off (default): the host's own
+   * responsive behaviour stands.
+   */
+  keepTurnRail?: boolean
+  /**
    * Remove the 16 px gap above highlighted code blocks so the highlighted
    * box sits flush with the preceding paragraph, list item, or heading.
    * The wrapper (`.md-code-block` in `CodeBlock.module.css`) ships with
@@ -200,6 +212,11 @@ export const CONVERSATION_WIDTH_STORAGE_KEY = 'dsh.conversation.contentWidth'
 export const DEFAULT_STABLE_TABLE = true
 /** Default: every shipped tweak is on. */
 export const DEFAULT_STABLE_TURN_RAIL = true
+/**
+ * Default: off — the host's own 900px container query stands until the user
+ * opts into keeping the rail at every chat width.
+ */
+export const DEFAULT_KEEP_TURN_RAIL = false
 /** Default: every shipped tweak is on. */
 export const DEFAULT_CODE_BLOCK_FLUSH_TOP = true
 /** Default: every shipped tweak is on. */
@@ -240,6 +257,7 @@ export const Config: Schema<StyleTweaksConfig> = z.object({
   thinkHeight: z.number().min(MIN_THINK_HEIGHT).max(MAX_THINK_HEIGHT).default(DEFAULT_THINK_HEIGHT),
   stableTable: z.boolean().default(DEFAULT_STABLE_TABLE),
   stableTurnRail: z.boolean().default(DEFAULT_STABLE_TURN_RAIL),
+  keepTurnRail: z.boolean().default(DEFAULT_KEEP_TURN_RAIL),
   codeBlockFlushTop: z.boolean().default(DEFAULT_CODE_BLOCK_FLUSH_TOP),
   projectRunningIndicator: z.boolean().default(DEFAULT_PROJECT_RUNNING_INDICATOR),
   locateCurrentSession: z.boolean().default(DEFAULT_LOCATE_CURRENT_SESSION),
@@ -268,6 +286,8 @@ export interface ResolvedStyleTweaksConfig {
   stableTable: boolean
   /** Whether the stable-turn-rail tweak is enabled. */
   stableTurnRail: boolean
+  /** Whether the keep-turn-rail tweak is enabled. */
+  keepTurnRail: boolean
   /** Whether the code-block-flush-top tweak is enabled. */
   codeBlockFlushTop: boolean
   /** Whether the project-running-indicator tweak is enabled. */
@@ -300,6 +320,7 @@ export function resolveConfig(config: StyleTweaksConfig = {}): ResolvedStyleTwea
     thinkHeight: resolveThinkHeight(config.thinkHeight),
     stableTable: config.stableTable ?? DEFAULT_STABLE_TABLE,
     stableTurnRail: config.stableTurnRail ?? DEFAULT_STABLE_TURN_RAIL,
+    keepTurnRail: config.keepTurnRail ?? DEFAULT_KEEP_TURN_RAIL,
     codeBlockFlushTop: config.codeBlockFlushTop ?? DEFAULT_CODE_BLOCK_FLUSH_TOP,
     projectRunningIndicator: config.projectRunningIndicator ?? DEFAULT_PROJECT_RUNNING_INDICATOR,
     locateCurrentSession: config.locateCurrentSession ?? DEFAULT_LOCATE_CURRENT_SESSION,

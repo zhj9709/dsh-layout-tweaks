@@ -41,6 +41,7 @@ import {
 import { TWEAKS, type TweakDescriptor } from './tweaks/registry.ts'
 import { injectStableTableStyles } from './tweaks/stable-table.ts'
 import { injectStableTurnRailStyles } from './tweaks/stable-turn-rail.ts'
+import { injectKeepTurnRailStyles } from './tweaks/keep-turn-rail.ts'
 import { injectCodeBlockFlushTopStyles } from './tweaks/code-block-flush-top.ts'
 import { setupProjectRunningIndicator } from './tweaks/project-running-indicator.ts'
 import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
@@ -66,6 +67,7 @@ const SETTINGS_ROUTE = '/_dsh/style-tweaks/settings'
 const TWEAK_INJECTORS: Record<string, (ctx: ClientContext, resolved: ResolvedTweaks) => () => void> = {
   'stable-table': () => injectStableTableStyles(),
   'stable-turn-rail': () => injectStableTurnRailStyles(),
+  'keep-turn-rail': () => injectKeepTurnRailStyles(),
   'code-block-flush-top': () => injectCodeBlockFlushTopStyles(),
   'project-running-indicator': setupProjectRunningIndicator,
   'locate-current-session': setupLocateCurrentSession,
@@ -93,6 +95,8 @@ interface TweaksValue {
   stableTable?: boolean
   /** Whether the stable-turn-rail tweak is enabled. */
   stableTurnRail?: boolean
+  /** Whether the keep-turn-rail tweak is enabled. */
+  keepTurnRail?: boolean
   /** Whether the code-block-flush-top tweak is enabled. */
   codeBlockFlushTop?: boolean
   /** Whether the project-running-indicator tweak is enabled. */
@@ -123,6 +127,7 @@ interface ResolvedTweaks {
   thinkHeight: number
   stableTable: boolean
   stableTurnRail: boolean
+  keepTurnRail: boolean
   codeBlockFlushTop: boolean
   projectRunningIndicator: boolean
   locateCurrentSession: boolean
@@ -180,6 +185,8 @@ const en = {
   'tweak.stableTable.description': 'Lock table layout on hover so surrounding content does not reflow ("text jumps when I hover a table").',
   'tweak.stableTurnRail.title': 'Stable turn-navigation rail',
   'tweak.stableTurnRail.description': 'Keep the turn-navigation rail at a stable position when scrolling up past the first message into the system prompt ("the rail jumps down by ~16 px when I scroll up after clicking the first turn").',
+  'tweak.keepTurnRail.title': 'Always show turn navigation',
+  'tweak.keepTurnRail.description': 'DSH hides the turn-navigation rail once the chat column\'s content box reaches 900 px (a container query in TurnNavigator.module.css) — which is what widening the right sidebar does, since the center column may be squeezed down to 400 px. This keeps the rail at every chat width. At narrow widths the rail sits in the scrollport\'s right gutter and its hover preview covers part of the transcript.',
   'tweak.codeBlockFlushTop.title': 'Flush code-block top',
   'tweak.codeBlockFlushTop.description': 'Remove the 16 px gap above highlighted code blocks so the code sits flush with the preceding paragraph, list item, or heading.',
   'tweak.projectRunningIndicator.title': 'Project running indicator',
@@ -267,6 +274,8 @@ const zh: Record<LocaleKey, string> = {
   'tweak.stableTable.description': '锁住表格 hover 时的布局，避免周围内容发生回流（"鼠标移到表格上时下方文本会跳动"）。',
   'tweak.stableTurnRail.title': '轮次导航栏稳定',
   'tweak.stableTurnRail.description': '向上滚动到第一条消息上方的系统提示词区域时，让右侧轮次导航栏保持在原位（不再下移约 16 像素）。',
+  'tweak.keepTurnRail.title': '轮次导航常显',
+  'tweak.keepTurnRail.description': 'DSH 会在聊天列内容盒宽度降到 900 px 时隐藏轮次导航栏（TurnNavigator.module.css 的容器查询）——把右侧边栏拉宽就会触发，中间列最多可被压到 400 px。开启后任何聊天宽度下都保留轮次导航。窄宽度下导航停在滚动区右侧的空隙里，悬停预览会遮住部分正文。',
   'tweak.codeBlockFlushTop.title': '代码块顶部贴齐',
   'tweak.codeBlockFlushTop.description': '去掉高亮代码块上方的 16 px 空白，让代码块紧贴在前面的段落、列表项或标题下方。',
   'tweak.projectRunningIndicator.title': '项目目录运行指示',
@@ -334,6 +343,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     thinkHeight: resolveThinkHeight(value?.thinkHeight),
     stableTable: value?.stableTable ?? true,
     stableTurnRail: value?.stableTurnRail ?? true,
+    keepTurnRail: value?.keepTurnRail ?? false,
     codeBlockFlushTop: value?.codeBlockFlushTop ?? true,
     projectRunningIndicator: value?.projectRunningIndicator ?? true,
     locateCurrentSession: value?.locateCurrentSession ?? true,
