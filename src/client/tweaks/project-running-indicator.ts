@@ -3,24 +3,43 @@
  *
  * The first non-pure-CSS tweak: it renders the *app's own* `StateDot`
  * (the animated pixel-chase shown left of a running conversation's title,
- * `ui-primitives/src/StateDot.tsx`) on the right side of every project
- * directory header row in the sidebar, so a running conversation stays
- * visible even when its group is collapsed.
+ * `ui-primitives/src/StateDot.tsx`) in two places in the sidebar, so work in
+ * flight stays visible:
+ *
+ *   - on the right side of every project directory header row, so a busy
+ *     conversation stays visible even when its group is collapsed;
+ *   - in the status slot of a session row the app left empty (`slot` before
+ *     the title). That empty slot is exactly what a background job produces:
+ *     the run outlives the turn that started it, `SessionSummary.running`
+ *     goes back to false, and the app's own `sessionStatuses`
+ *     (`ui-workspace/src/client/rows/Rows.tsx:231`) then computes `done` —
+ *     which renders no dot unless the session is also an unviewed completion.
  *
  * ## Why DOM patching
  *
  * DSH's project header (`ProjectRowItem`, `ui-workspace/src/client/rows/
- * Rows.tsx:112`) exposes no plugin slot, and the `sidebar.workspaces` seat
- * is already occupied by the stock browser — so the header row can only be
- * decorated from outside, via a MutationObserver. Consistent with this
- * repo's selector philosophy, the engine anchors exclusively on hand-written
- * DOM facts that survive CSS-Modules hashing:
+ * Rows.tsx:112`) and its session row (`SessionNodeItem`, same file:379)
+ * expose no plugin slot, and the `sidebar.workspaces` seat is already
+ * occupied by the stock browser — so the rows can only be decorated from
+ * outside, via a MutationObserver. Consistent with this repo's selector
+ * philosophy, the engine anchors exclusively on hand-written DOM facts that
+ * survive CSS-Modules hashing:
  *
  *   - group header rows are the only `role="treeitem"` elements carrying
  *     `aria-expanded` (session rows and flat-list rows never have it);
  *   - the row's title text is the only `:scope > span > span` descendant
  *     with non-empty text (folder/chevron slots hold bare SVGs, the action
- *     buttons' labels live on `aria-label`, not text).
+ *     buttons' labels live on `aria-label`, not text);
+ *   - session rows are the `role="treeitem"` elements whose class carries the
+ *     CSS-Modules local name `sessionRow` — the search-result rows are
+ *     `searchResultRow`, which does not contain that fragment.
+ *
+ * A row's session id is the one fact the DOM does not carry, so it is read
+ * off React's fiber chain: `SessionNodeItem` memoizes `props.node`, whose
+ * `id` is the `SessionId`. The walk is defensive (a missing fiber, a renamed
+ * component, or a reused row all read as "unknown id") and re-checked every
+ * pass, because a recycled row can hold a different session than it did last
+ * time.
  *
  * ## Data source
  *
@@ -28,16 +47,27 @@
  * DOM (a collapsed group hides its child rows, so the DOM cannot answer):
  *
  *   - `ctx.get('sessions').list` — snapshot store of `SessionSummary`s
- *     (`byId[id].running`);
+ *     (`byId[id].running`) plus `jobsBySession`, the browser-safe
+ *     `SessionJob` rows mirrored from Session Controller's control stream;
  *   - `ctx.get('workspaces').list` — `WorkspaceSnapshot.items`, each
  *     `WorkspaceView.sessionIds` mapping sessions to directories.
+ *
+ * A session is busy when any of these holds:
+ *
+ *   - its own agent is executing a turn (`Summary.running`);
+ *   - it owns a live background job — `SessionJob.status` of `running` or
+ *     `stopping`, the same predicate `ui-jobs`' own `JobListAction` calls
+ *     `isLive`. A `run_in_background` shell command outlives the turn that
+ *     started it, so without this the group goes dark while work is still
+ *     running (and the job's completion notice is what eventually wakes the
+ *     session again);
+ *   - a running subagent sits below it in the lineage (the same walk as
+ *     `indexSubagentDescendants`), which is what the title's own dot shows.
  *
  * Membership is computed from the workspace arrays (mirroring
  * `deriveGroups` in `ui-workspace/src/client/tree.ts`): archived and blank
  * sessions are skipped, sessions not in any workspace count toward the
- * "Ungrouped" bucket. A running subagent marks its top-level ancestor
- * session busy (same lineage walk as `indexSubagentDescendants`), which is
- * what the title's own dot shows.
+ * "Ungrouped" bucket.
  *
  * Header rows are matched to workspaces by title text; a header whose label
  * matches no workspace title is the Ungrouped bucket. This avoids depending
@@ -53,8 +83,14 @@
  * `dsh-state-dot-chase` keyframes) and theme tokens are already loaded, and
  * the animation is pixel-identical to the one on session titles. The dot is
  * mounted with a `react-dom/client` root per decorated row and unmounted
- * whenever the group goes idle, the row leaves the DOM, or the tweak is
+ * whenever the row goes idle, the row leaves the DOM, or the tweak is
  * disabled.
+ *
+ * A session row is only decorated while its slot is empty: the moment the app
+ * renders its own dot there (the session started a turn, a subagent is
+ * running, an interaction is pending, or an unviewed completion is showing),
+ * the injected dot steps aside instead of doubling up. Group headers have no
+ * such slot and are matched by title text, as before.
  */
 
 import { createElement } from 'react'
@@ -85,6 +121,18 @@ interface SessionListStateLike {
   /** Host-list order; breadcrumb-only subagent rows are excluded. */
   readonly ids: readonly string[]
   readonly byId: Readonly<Record<string, SessionSummaryLike | undefined>>
+  /**
+   * Background jobs per session, mirrored last-wins from Session
+   * Controller's control baseline and `jobs` frames. Optional because a
+   * host build without the `jobs` service simply never fills it (and an
+   * older host may not carry the field at all) — both read as "no jobs".
+   */
+  readonly jobsBySession?: Readonly<Record<string, readonly SessionJobLike[] | undefined>> | undefined
+}
+
+/** Fields of `SessionJob` the live-job check needs. */
+interface SessionJobLike {
+  readonly status: 'running' | 'stopping' | 'completed' | 'killed' | 'failed'
 }
 
 /** Fields of `WorkspaceView` the membership mapping needs. */
@@ -99,13 +147,18 @@ interface WorkspaceSnapshotLike {
   readonly archivedSessionIds: readonly string[]
 }
 
-/** Which group headers currently show a dot, keyed by visible label. */
-interface GroupBusy {
+/** Which rows must currently show a dot. */
+interface BusyState {
   /** Labels with at least one busy member session. */
   readonly busyTitles: ReadonlySet<string>
   /** Every workspace title, for recognizing the Ungrouped header. */
   readonly knownTitles: ReadonlySet<string>
   readonly ungroupedBusy: boolean
+  /**
+   * Sessions holding a live background job. Session rows decorate on this
+   * alone: every other busy case already has the app's own dot in the slot.
+   */
+  readonly liveJobIds: ReadonlySet<string>
 }
 
 const INDICATOR_CSS = `
@@ -116,11 +169,19 @@ span[data-cst-proj-indicator] {
   margin-left: 2px;
   pointer-events: none;
 }
+span[data-cst-session-indicator] {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  pointer-events: none;
+}
 `
 
 const INDICATOR_CSS_ID = 'cst-project-running-indicator'
 /** Group header rows are the only treeitems with aria-expanded (Rows.tsx:143). */
 const HEADER_SELECTOR = '[role="treeitem"][aria-expanded]'
+/** Session rows carry the CSS-Modules local name `sessionRow` (search rows do not). */
+const SESSION_ROW_SELECTOR = '[role="treeitem"][class*="sessionRow"]'
 
 function installIndicatorStyles(): () => void {
   let style = document.querySelector<HTMLStyleElement>(`style[data-tweak-css="${INDICATOR_CSS_ID}"]`)
@@ -135,24 +196,47 @@ function installIndicatorStyles(): () => void {
 }
 
 /**
- * Derive which group labels must show a dot. Mirrors `deriveGroups`
- * membership rules: archived and blank sessions never render as rows, and
- * subagent rows belong to their top-level ancestor's group.
+ * Derive which rows must show a dot. Mirrors `deriveGroups` membership rules:
+ * archived and blank sessions never render as rows, and subagent rows belong
+ * to their top-level ancestor's group.
  */
-function computeGroupBusy(
+function computeBusy(
   sessions: SnapshotStoreLike<SessionListStateLike>,
   workspaces: SnapshotStoreLike<WorkspaceSnapshotLike>,
-): GroupBusy {
+): BusyState {
   const list = sessions.getSnapshot()
   const snapshot = workspaces.getSnapshot()
   const archived = new Set(snapshot.archivedSessionIds)
 
-  // Running subagents light up their top-level ancestor (Rows.tsx
-  // sessionStatuses shows 'ongoing' for runningSubagentCount > 0).
+  const jobsBySession = list.jobsBySession
+
+  // A live background job keeps its owner visibly busy: `run_in_background`
+  // work outlives the turn that started it, and only its settlement notice
+  // wakes the session again — so the group must not go dark in between.
+  // Same `isLive` predicate as ui-jobs' own `JobListAction`.
+  const hasLiveJob = (id: string): boolean =>
+    (jobsBySession?.[id] ?? []).some(job => job.status === 'running' || job.status === 'stopping')
+
+  // Session rows are keyed by session id, and a session may hold a job that
+  // the host's own row status does not reflect — collect those ids once.
+  const liveJobIds = new Set<string>()
+  for (const id of Object.keys(jobsBySession ?? {})) {
+    if (hasLiveJob(id)) liveJobIds.add(id)
+  }
+
+  const isSelfBusy = (id: string): boolean => {
+    const summary = list.byId[id]
+    if (summary === undefined) return false
+    return summary.running || hasLiveJob(id)
+  }
+
+  // Busy subagents light up their top-level ancestor (Rows.tsx
+  // sessionStatuses shows 'ongoing' for runningSubagentCount > 0). A
+  // subagent that is only holding a live background job counts too.
   const busyAncestors = new Set<string>()
   for (const summary of Object.values(list.byId)) {
     if (summary === undefined) continue
-    if (!summary.running || summary.origin !== 'subagent') continue
+    if (summary.origin !== 'subagent' || !isSelfBusy(summary.id)) continue
     const seen = new Set<string>()
     let current: SessionSummaryLike | undefined = summary
     while (current?.origin === 'subagent' && current.parentId !== undefined && !seen.has(current.id)) {
@@ -161,11 +245,7 @@ function computeGroupBusy(
     }
     if (current !== undefined && current.origin !== 'subagent') busyAncestors.add(current.id)
   }
-  const isBusy = (id: string): boolean => {
-    const summary = list.byId[id]
-    if (summary === undefined) return false
-    return summary.running || busyAncestors.has(id)
-  }
+  const isBusy = (id: string): boolean => isSelfBusy(id) || busyAncestors.has(id)
 
   const busyTitles = new Set<string>()
   const knownTitles = new Set<string>()
@@ -192,7 +272,7 @@ function computeGroupBusy(
     if (isBusy(id)) { ungroupedBusy = true; break }
   }
 
-  return { busyTitles, knownTitles, ungroupedBusy }
+  return { busyTitles, knownTitles, ungroupedBusy, liveJobIds }
 }
 
 /** Title text of a header row: the only span-in-span with visible text. */
@@ -202,6 +282,47 @@ function rowLabel(row: Element): string | undefined {
     if (label !== undefined && label.length > 0) return label
   }
   return undefined
+}
+
+/** Minimal shape of React's internal fiber node, for the id walk only. */
+interface FiberLike {
+  readonly memoizedProps?: { readonly node?: { readonly id?: unknown } } | null | undefined
+  readonly return?: FiberLike | null | undefined
+}
+
+/** React keys its internal fiber on the DOM node with this prefix. */
+const FIBER_KEY_PREFIX = '__reactFiber$'
+/** Cap the upward walk; `SessionNodeItem` sits a handful of levels above the row. */
+const FIBER_WALK_LIMIT = 32
+/** Row element → its (stable) React fiber key. Cached because `Object.keys` allocates. */
+const fiberKeys = new WeakMap<Element, string>()
+
+/**
+ * Session id behind one session row. The DOM itself carries no id, so it is
+ * read off the fiber chain, where `SessionNodeItem` memoizes `props.node.id`.
+ * Deliberately forgiving: a build without a React fiber, a renamed component,
+ * a recycled row, or any other surprise yields `undefined` and the row is then
+ * simply left alone (it is re-resolved on every pass, never trusted).
+ */
+function sessionIdOfRow(row: Element): string | undefined {
+  let key = fiberKeys.get(row)
+  if (key === undefined) {
+    key = Object.keys(row).find(candidate => candidate.startsWith(FIBER_KEY_PREFIX))
+    if (key === undefined) return undefined
+    fiberKeys.set(row, key)
+  }
+  let fiber = (row as unknown as Record<string, FiberLike | undefined>)[key]
+  for (let depth = 0; fiber != null && depth < FIBER_WALK_LIMIT; depth++) {
+    const id = fiber.memoizedProps?.node?.id
+    if (typeof id === 'string') return id
+    fiber = fiber.return ?? undefined
+  }
+  return undefined
+}
+
+/** The session row's status slot: the leading span the app's own StateDot lives in. */
+function sessionSlot(row: Element): Element | null {
+  return row.querySelector(':scope > [class*="slot"]')
 }
 
 interface Indicator {
@@ -251,19 +372,20 @@ export function setupProjectRunningIndicator(ctx: ClientContext): () => void {
   }
 
   const indicators = new Map<Element, Indicator>()
+  const sessionIndicators = new Map<Element, Indicator>()
 
-  const removeIndicator = (row: Element): void => {
-    const indicator = indicators.get(row)
+  const removeIndicator = (map: Map<Element, Indicator>, row: Element): void => {
+    const indicator = map.get(row)
     if (indicator === undefined) return
-    indicators.delete(row)
+    map.delete(row)
     indicator.root.unmount()
     indicator.host.remove()
-    // After this point the entry is gone from `indicators` and the host is
+    // After this point the entry is gone from its map and the host is
     // detached, so the React root and DOM node are both GC-eligible. Do not
     // call `indicator.root.render(...)` past here — it's a defunct handle.
   }
 
-  const syncRow = (row: Element, busy: GroupBusy): void => {
+  const syncHeaderRow = (row: Element, busy: BusyState): void => {
     const label = rowLabel(row)
     if (label === undefined) return
     // The Ungrouped bucket is the header whose label matches no workspace
@@ -273,7 +395,7 @@ export function setupProjectRunningIndicator(ctx: ClientContext): () => void {
     let indicator = indicators.get(row)
     if (!active) {
       // Group went idle (or the row lost its label): unmount the dot.
-      if (indicator !== undefined) removeIndicator(row)
+      if (indicator !== undefined) removeIndicator(indicators, row)
       return
     }
     if (indicator === undefined) {
@@ -294,15 +416,67 @@ export function setupProjectRunningIndicator(ctx: ClientContext): () => void {
     }
   }
 
+  /**
+   * One session row known to hold a live background job. The app's own status
+   * dot never covers that case, so the row's slot is empty — which is exactly
+   * where the dot belongs. A slot the app has taken back is left untouched.
+   */
+  const mountSessionIndicator = (row: Element): void => {
+    const slot = sessionSlot(row)
+    if (slot === null) return
+    // Never share the slot: a row whose app dot is already showing (turn
+    // running, subagent running, interaction pending, unviewed completion) is
+    // already saying something, and doubling it up would only confuse.
+    if (slot.firstElementChild !== null) return
+    const host = document.createElement('span')
+    host.dataset.cstSessionIndicator = ''
+    slot.prepend(host)
+    const indicator = { host, root: createRoot(host), shown: false }
+    sessionIndicators.set(row, indicator)
+    indicator.shown = true
+    indicator.root.render(createElement(StateDot, { state: 'ongoing' }))
+  }
+
+  /**
+   * Retire every decorated session row this pass no longer justifies: the row
+   * was detached or recycled onto another session, its job settled, or the app
+   * took the slot back. Runs before the mount sweep so a recycled row can never
+   * keep a dot belonging to its previous tenant.
+   */
+  const pruneSessionIndicators = (liveJobIds: ReadonlySet<string>): void => {
+    for (const row of [...sessionIndicators.keys()]) {
+      const indicator = sessionIndicators.get(row)
+      if (indicator === undefined) continue
+      if (!row.isConnected) { removeIndicator(sessionIndicators, row); continue }
+      const id = sessionIdOfRow(row)
+      const slot = id !== undefined && liveJobIds.has(id) ? sessionSlot(row) : null
+      const taken = slot === null
+        || [...slot.children].some(child => child !== indicator.host)
+      if (id === undefined || !liveJobIds.has(id) || taken) {
+        removeIndicator(sessionIndicators, row)
+      }
+    }
+  }
+
   const sync = (): void => {
     // Rows removed from the document: their entries must go (Map, not
     // WeakMap, because we need isConnected checks + explicit removal).
     for (const row of [...indicators.keys()]) {
-      if (!row.isConnected) removeIndicator(row)
+      if (!row.isConnected) removeIndicator(indicators, row)
     }
-    const busy = computeGroupBusy(sessionList, workspaceList)
+    const busy = computeBusy(sessionList, workspaceList)
     for (const row of document.querySelectorAll(HEADER_SELECTOR)) {
-      syncRow(row, busy)
+      syncHeaderRow(row, busy)
+    }
+    pruneSessionIndicators(busy.liveJobIds)
+    // Zero-cost when no session holds a job, which is the ordinary case: the
+    // row sweep below then has nothing to match against.
+    if (busy.liveJobIds.size === 0) return
+    for (const row of document.querySelectorAll(SESSION_ROW_SELECTOR)) {
+      if (sessionIndicators.has(row)) continue
+      const id = sessionIdOfRow(row)
+      if (id === undefined || !busy.liveJobIds.has(id)) continue
+      mountSessionIndicator(row)
     }
   }
 
@@ -330,7 +504,8 @@ export function setupProjectRunningIndicator(ctx: ClientContext): () => void {
     unsubscribeSessions()
     unsubscribeWorkspaces()
     observer.disconnect()
-    for (const row of [...indicators.keys()]) removeIndicator(row)
+    for (const row of [...indicators.keys()]) removeIndicator(indicators, row)
+    for (const row of [...sessionIndicators.keys()]) removeIndicator(sessionIndicators, row)
     removeStyles()
     setGlobalCleanup(undefined)
   }
