@@ -722,9 +722,21 @@ export function setupLocateCurrentSession(ctx: ClientContext): () => void {
     performLocate(sessionList, workspaceList)
   }
 
+  /**
+   * Bind the click handler to a button exactly once, marked by
+   * `data-cst-locate-wired`. The synchronous first mount and the observer's
+   * ticks both land here, and the marker is what keeps the second one from
+   * binding the same element twice — a duplicate would run `performLocate`
+   * twice per click and leave a listener behind on disposal.
+   */
+  const wire = (btn: HTMLButtonElement | null): void => {
+    if (btn === null || btn.dataset.cstLocateWired !== undefined) return
+    btn.addEventListener('click', onClick)
+    btn.dataset.cstLocateWired = '1'
+  }
+
   // Try once synchronously so the first paint already shows the button.
-  const initial = mountButton()
-  if (initial !== null) initial.addEventListener('click', onClick)
+  wire(mountButton())
 
   // Watch for the search button to appear / be replaced (DSH rebuilds the
   // sidebar header on width toggle, workspace switch, and other view
@@ -741,11 +753,7 @@ export function setupLocateCurrentSession(ctx: ClientContext): () => void {
       // refresh=true re-syncs the existing button's enabled state on every
       // tick; mountButton falls back to a no-op mount when the button is
       // already there. The microtask coalesces the burst into one re-sync.
-      const btn = mountButton(true)
-      if (btn !== null && !btn.dataset.cstLocateWired) {
-        btn.addEventListener('click', onClick)
-        btn.dataset.cstLocateWired = '1'
-      }
+      wire(mountButton(true))
     })
   }
   const observer = new MutationObserver(schedule)
