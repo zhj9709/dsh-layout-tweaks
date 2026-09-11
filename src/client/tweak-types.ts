@@ -41,4 +41,8 @@ export interface ResolvedStyleTweaksConfig {
   pillsCacheHitDecimals: boolean
   /** Whether the turn-speed-metrics tweak is enabled. */
   turnSpeedMetrics: boolean
+  /** Whether the right Sidebar's first-open width is owned by the plugin. */
+  rightbarInitialWidth: boolean
+  /** Right Sidebar first-open width as a percentage of the session frame. */
+  rightbarWidthPercent: number
 }

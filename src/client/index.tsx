@@ -23,14 +23,18 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import { installConversationWidthStyles } from './conversation-width.ts'
 import { setupSettingsNavIcon } from './settings-nav-icon.ts'
 import {
+  DEFAULT_RIGHTBAR_INITIAL_WIDTH,
   DEFAULT_THINK_FIXED_HEIGHT,
   DEFAULT_USE_PLUGIN_WIDTH,
   MAX_DIALOG_WIDTH,
+  MAX_RIGHTBAR_WIDTH_PERCENT,
   MAX_THINK_HEIGHT,
   MIN_DIALOG_WIDTH,
+  MIN_RIGHTBAR_WIDTH_PERCENT,
   MIN_SIDE_MARGIN,
   MIN_THINK_HEIGHT,
   resolveDialogWidth,
+  resolveRightbarPercent,
   resolveSideMargin,
   resolveThinkHeight,
 } from './tweak-config.ts'
@@ -43,6 +47,7 @@ import { setupLocateCurrentSession } from './tweaks/locate-current-session.ts'
 import { setupSettingsNavScroll } from './tweaks/settings-nav-scroll.ts'
 import { setupSidebarMiddleClickClose } from './tweaks/sidebar-middle-click-close.ts'
 import { installThinkingScrollStyles } from './tweaks/thinking-scroll.ts'
+import { installRightbarInitialWidth } from './tweaks/rightbar-initial-width.ts'
 import { setupLegacyStatsLine } from './tweaks/legacy-stats-line.tsx'
 import { setupPillsCacheHitDecimals } from './tweaks/pills-cache-hit-decimals.tsx'
 import { setupTurnSpeedMetrics } from './tweaks/turn-speed-metrics.tsx'
@@ -104,6 +109,10 @@ interface TweaksValue {
   pillsCacheHitDecimals?: boolean
   /** Whether the turn-speed-metrics tweak is enabled. */
   turnSpeedMetrics?: boolean
+  /** Whether the plugin owns the right Sidebar's first-open width. */
+  rightbarInitialWidth?: boolean
+  /** Right Sidebar first-open width as a percentage of the frame; clamped to [15, 70]. */
+  rightbarWidthPercent?: number
 }
 
 interface ResolvedTweaks {
@@ -122,6 +131,8 @@ interface ResolvedTweaks {
   legacyStatsLine: boolean
   pillsCacheHitDecimals: boolean
   turnSpeedMetrics: boolean
+  rightbarInitialWidth: boolean
+  rightbarWidthPercent: number
 }
 
 interface Snapshot {
@@ -154,6 +165,10 @@ const en = {
   thinkFixedHeightHint: 'Cap the expanded think (reasoning) body at a fixed height and scroll the overflow, so a long thinking trace stops pushing the rest of the conversation out of view. Folding the row back to one line keeps working as usual. While a trace is still streaming, the window shows its top and you scroll for the tail.',
   thinkHeight: 'Think height',
   thinkHeightHint: 'Height of the fixed think body in px, between 120 and 1200.',
+  rightbarInitialWidth: 'Right sidebar initial width',
+  rightbarInitialWidthHint: 'Own the right sidebar\'s first-open width. OFF by default, which leaves DSH\'s own 45% in charge. When ON, the plugin writes the width once — the first time the sidebar opens in this page load — as a percentage of the session frame; a manual drag, and every later open, keeps your own width. Reload the page to apply the percentage again.',
+  rightbarWidthPercent: 'Right sidebar width',
+  rightbarWidthPercentHint: 'First-open width of the right sidebar as a percentage of the session frame, between 15 and 70. DSH clamps the result into its own range (at least 300 px, at most 70% of the frame), so a conversion below 300 px renders 300 px wide.',
   defaultAction: 'Default',
   applied: 'Applied',
   unavailable: 'Settings unavailable.',
@@ -237,6 +252,10 @@ const zh: Record<LocaleKey, string> = {
   thinkFixedHeightHint: '展开"深度思考"正文时限制为固定高度，超出部分滚动查看，很长的思考不再把后面的回复顶出视野；收起后照旧恢复为一行摘要。思考仍在生成时窗口显示开头，可滚动查看后续内容。',
   thinkHeight: '思考内容高度',
   thinkHeightHint: '思考内容的显示高度（px，120–1200）。',
+  rightbarInitialWidth: '右侧边栏初始宽度',
+  rightbarInitialWidthHint: '接管右侧边栏首次打开时的宽度。默认关闭，此时保持 DSH 自身的 45% 不变；开启后仅在本次页面加载后的第一次打开时按会话窗口的百分比写入一次，之后手动拖拽、关闭再打开都保留你自己拖出来的宽度，刷新页面后该百分比会重新生效。',
+  rightbarWidthPercent: '右侧边栏宽度',
+  rightbarWidthPercentHint: '右侧边栏首次打开时占会话窗口宽度的百分比，取值 15–70。DSH 会把结果钳制到它自己的范围内（最小 300 px、最大窗口的 70%），因此换算结果不足 300 px 时会按 300 px 显示。',
   defaultAction: '默认',
   applied: '已应用',
   unavailable: '设置暂不可用。',
@@ -323,6 +342,8 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
     legacyStatsLine: value?.legacyStatsLine ?? false,
     pillsCacheHitDecimals: value?.pillsCacheHitDecimals ?? false,
     turnSpeedMetrics: value?.turnSpeedMetrics ?? false,
+    rightbarInitialWidth: value?.rightbarInitialWidth ?? DEFAULT_RIGHTBAR_INITIAL_WIDTH,
+    rightbarWidthPercent: resolveRightbarPercent(value?.rightbarWidthPercent),
   }
 }
 
@@ -544,10 +565,12 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
   const [widthDraft, setWidthDraft] = useState<string>(String(resolved.dialogWidth))
   const [marginDraft, setMarginDraft] = useState<string>(String(resolved.sideMargin))
   const [thinkHeightDraft, setThinkHeightDraft] = useState<string>(String(resolved.thinkHeight))
+  const [rightbarWidthDraft, setRightbarWidthDraft] = useState<string>(String(resolved.rightbarWidthPercent))
 
   useEffect(() => { setWidthDraft(String(resolved.dialogWidth)) }, [resolved.dialogWidth])
   useEffect(() => { setMarginDraft(String(resolved.sideMargin)) }, [resolved.sideMargin])
   useEffect(() => { setThinkHeightDraft(String(resolved.thinkHeight)) }, [resolved.thinkHeight])
+  useEffect(() => { setRightbarWidthDraft(String(resolved.rightbarWidthPercent)) }, [resolved.rightbarWidthPercent])
 
   const commitDialogWidth = (raw: string): void => {
     setWidthDraft(raw)
@@ -605,6 +628,30 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
     const next = Math.min(MAX_THINK_HEIGHT, Math.max(MIN_THINK_HEIGHT, resolved.thinkHeight + delta))
     setThinkHeightDraft(String(next))
     void controller.set('thinkHeight', next).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+  }
+
+  const setRightbarInitialWidth = (value: boolean): void => {
+    void controller.set('rightbarInitialWidth', value).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+  }
+
+  const commitRightbarWidth = (raw: string): void => {
+    setRightbarWidthDraft(raw)
+    const parsed = Number(raw)
+    if (!Number.isFinite(parsed)) return
+    const clamped = Math.min(MAX_RIGHTBAR_WIDTH_PERCENT, Math.max(MIN_RIGHTBAR_WIDTH_PERCENT, Math.round(parsed)))
+    setRightbarWidthDraft(String(clamped))
+    void controller.set('rightbarWidthPercent', clamped).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+  }
+
+  const stepRightbarWidth = (delta: number): void => {
+    const next = Math.min(MAX_RIGHTBAR_WIDTH_PERCENT, Math.max(MIN_RIGHTBAR_WIDTH_PERCENT, resolved.rightbarWidthPercent + delta))
+    setRightbarWidthDraft(String(next))
+    void controller.set('rightbarWidthPercent', next).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+  }
+
+  const applyRightbarWidthPreset = (percent: number): void => {
+    setRightbarWidthDraft(String(percent))
+    void controller.set('rightbarWidthPercent', percent).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
   }
 
   const setTweak = (tweak: TweakDescriptor, value: boolean): void => {
@@ -727,6 +774,49 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
                   />
                   <button type="button" aria-label="+" disabled={!writable || resolved.thinkHeight >= MAX_THINK_HEIGHT} onClick={() => { stepThinkHeight(20) }}>+</button>
                 </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        <div className="cst-field">
+          <div className="cst-field-top">
+            <span className="cst-label">{t('rightbarInitialWidth')}<Hint text={t('rightbarInitialWidthHint')} /></span>
+            <div className="cst-controls">
+              <div className="cst-seg">
+                <button type="button" className={resolved.rightbarInitialWidth ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { setRightbarInitialWidth(true) }}>{t('tweakOn')}</button>
+                <button type="button" className={!resolved.rightbarInitialWidth ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { setRightbarInitialWidth(false) }}>{t('tweakOff')}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {resolved.rightbarInitialWidth ? (
+          <div className="cst-field">
+            <div className="cst-field-top">
+              <span className="cst-label">{t('rightbarWidthPercent')}<Hint text={t('rightbarWidthPercentHint')} /></span>
+              <div className="cst-controls">
+                <div className="cst-stepper">
+                  <button type="button" aria-label="−" disabled={!writable || resolved.rightbarWidthPercent <= MIN_RIGHTBAR_WIDTH_PERCENT} onClick={() => { stepRightbarWidth(-5) }}>−</button>
+                  <input
+                    type="number"
+                    min={MIN_RIGHTBAR_WIDTH_PERCENT}
+                    max={MAX_RIGHTBAR_WIDTH_PERCENT}
+                    step={5}
+                    value={rightbarWidthDraft}
+                    disabled={!writable}
+                    onChange={(event) => { setRightbarWidthDraft(event.target.value) }}
+                    onBlur={(event) => { commitRightbarWidth(event.target.value) }}
+                    onKeyDown={(event) => { if (event.key === 'Enter') commitRightbarWidth((event.target as HTMLInputElement).value) }}
+                  />
+                  <button type="button" aria-label="+" disabled={!writable || resolved.rightbarWidthPercent >= MAX_RIGHTBAR_WIDTH_PERCENT} onClick={() => { stepRightbarWidth(5) }}>+</button>
+                </div>
+              </div>
+            </div>
+            <div className="cst-presets">
+              <div className="cst-seg">
+                <button type="button" className={resolved.rightbarWidthPercent === 30 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyRightbarWidthPreset(30) }}>30%</button>
+                <button type="button" className={resolved.rightbarWidthPercent === 40 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyRightbarWidthPreset(40) }}>40%</button>
+                <button type="button" className={resolved.rightbarWidthPercent === 45 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyRightbarWidthPreset(45) }}>{t('presetDefault')} · 45%</button>
+                <button type="button" className={resolved.rightbarWidthPercent === 55 ? 'cst-seg-active' : ''} disabled={!writable} onClick={() => { applyRightbarWidthPreset(55) }}>55%</button>
               </div>
             </div>
           </div>
@@ -858,6 +948,13 @@ export function apply(ctx: ClientContext): void {
       // above): not a registry boolean, so it mounts outside the TWEAKS loop.
       if (resolved.thinkFixedHeight) {
         cleanups.push(installThinkingScrollStyles(resolved.thinkHeight))
+      }
+      // Right Sidebar initial width: a layout feature with a numeric
+      // parameter, mounted outside the TWEAKS loop for the same reason as the
+      // think cap above. Re-mounted on every settings change, which is also
+      // what makes the live preview work while the sidebar is open.
+      if (resolved.rightbarInitialWidth) {
+        cleanups.push(installRightbarInitialWidth(ctx, resolved.rightbarWidthPercent))
       }
     }
     sync()

@@ -58,6 +58,14 @@ export const DEFAULT_LEGACY_STATS_LINE = false
 export const DEFAULT_PILLS_CACHE_HIT_DECIMALS = false
 /** Default state of the turn-speed-metrics tweak (off: the stock footer keeps its shipped shape). */
 export const DEFAULT_TURN_SPEED_METRICS = false
+/** Default state of the right-Sidebar initial-width tweak (off: the host keeps its own 45%). */
+export const DEFAULT_RIGHTBAR_INITIAL_WIDTH = false
+/** Default right Sidebar first-open width percentage (equals the host's 45%). */
+export const DEFAULT_RIGHTBAR_WIDTH_PERCENT = 45
+/** Minimum configurable right Sidebar width percentage. */
+export const MIN_RIGHTBAR_WIDTH_PERCENT = 15
+/** Maximum configurable right Sidebar width percentage (= the host's 70% cap). */
+export const MAX_RIGHTBAR_WIDTH_PERCENT = 70
 
 /**
  * Normalize a dialog width value (legacy strings included) to px.
@@ -91,6 +99,17 @@ export function resolveThinkHeight(value: number | undefined): number {
 }
 
 /**
+ * Normalize a right-Sidebar width percentage.
+ * Must match `resolveRightbarPercent` in src/config.ts.
+ */
+export function resolveRightbarPercent(value: number | undefined): number {
+  if (typeof value === 'number') {
+    return Math.min(MAX_RIGHTBAR_WIDTH_PERCENT, Math.max(MIN_RIGHTBAR_WIDTH_PERCENT, Math.round(value)))
+  }
+  return DEFAULT_RIGHTBAR_WIDTH_PERCENT
+}
+
+/**
  * Build a fully-defaulted ResolvedStyleTweaksConfig from any
  * partial input. Mirror of `resolveConfig` in src/config.ts.
  */
@@ -113,5 +132,7 @@ export function resolveClientConfig(
     legacyStatsLine: value?.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
     pillsCacheHitDecimals: value?.pillsCacheHitDecimals ?? DEFAULT_PILLS_CACHE_HIT_DECIMALS,
     turnSpeedMetrics: value?.turnSpeedMetrics ?? DEFAULT_TURN_SPEED_METRICS,
+    rightbarInitialWidth: value?.rightbarInitialWidth ?? DEFAULT_RIGHTBAR_INITIAL_WIDTH,
+    rightbarWidthPercent: resolveRightbarPercent(value?.rightbarWidthPercent),
   }
 }

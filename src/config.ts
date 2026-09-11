@@ -55,6 +55,24 @@ export interface StyleTweaksConfig {
    * Clamped to [120, 1200] on read.
    */
   thinkHeight?: number
+  /**
+   * Own the right Sidebar's first-open width (host 0.1.5+). Off (default):
+   * the host's own 45% default owns the axis. On: the plugin writes the
+   * width once — the first time the right Sidebar opens during this page
+   * load — as `rightbarWidthPercent` of the session frame, and then leaves
+   * it alone. A manual drag, and every later open/close, keeps the user's
+   * own value for the rest of the load; a reload drops both the store and
+   * the one-shot marker, so the percentage applies again. Host builds
+   * without the 0.1.5 right Sidebar leave the tweak inert.
+   */
+  rightbarInitialWidth?: boolean
+  /**
+   * The right Sidebar's first-open width as a percentage of the session
+   * frame. Clamped to [15, 70] on read; the host then clamps the resulting
+   * px into its own range ([300 px, frame × 70%]), so a conversion landing
+   * under 300 px renders 300 px wide.
+   */
+  rightbarWidthPercent?: number
 
   // ── CSS tweaks ───────────────────────────────────────────────────────
   /**
@@ -201,6 +219,17 @@ export const DEFAULT_LEGACY_STATS_LINE = false
 export const DEFAULT_PILLS_CACHE_HIT_DECIMALS = false
 /** Default: off — the turn footer keeps its shipped shape. */
 export const DEFAULT_TURN_SPEED_METRICS = false
+/**
+ * Default: off — the host keeps its own 45% first-open width until the user
+ * opts in, so the plugin never takes over an axis the user did not ask about.
+ */
+export const DEFAULT_RIGHTBAR_INITIAL_WIDTH = false
+/** Right Sidebar first-open width as a percentage of the frame (= the host's 45%). */
+export const DEFAULT_RIGHTBAR_WIDTH_PERCENT = 45
+/** Minimum configurable percentage — below this the panel is unusably cramped. */
+export const MIN_RIGHTBAR_WIDTH_PERCENT = 15
+/** Maximum configurable percentage (= the host's `RIGHTBAR_MAX_RATIO`). */
+export const MAX_RIGHTBAR_WIDTH_PERCENT = 70
 
 /** Configuration schema with documented defaults. */
 export const Config: Schema<StyleTweaksConfig> = z.object({
@@ -219,6 +248,8 @@ export const Config: Schema<StyleTweaksConfig> = z.object({
   legacyStatsLine: z.boolean().default(DEFAULT_LEGACY_STATS_LINE),
   pillsCacheHitDecimals: z.boolean().default(DEFAULT_PILLS_CACHE_HIT_DECIMALS),
   turnSpeedMetrics: z.boolean().default(DEFAULT_TURN_SPEED_METRICS),
+  rightbarInitialWidth: z.boolean().default(DEFAULT_RIGHTBAR_INITIAL_WIDTH),
+  rightbarWidthPercent: z.number().min(MIN_RIGHTBAR_WIDTH_PERCENT).max(MAX_RIGHTBAR_WIDTH_PERCENT).default(DEFAULT_RIGHTBAR_WIDTH_PERCENT),
 })
 
 /** Configuration after static validation, with every default materialized. */
@@ -253,6 +284,10 @@ export interface ResolvedStyleTweaksConfig {
   pillsCacheHitDecimals: boolean
   /** Whether the turn-speed-metrics tweak is enabled. */
   turnSpeedMetrics: boolean
+  /** Whether the plugin owns the right Sidebar's first-open width. */
+  rightbarInitialWidth: boolean
+  /** Right Sidebar first-open width as a percentage of the session frame. */
+  rightbarWidthPercent: number
 }
 
 /** Resolve a partial config into a fully defaulted value. */
@@ -273,6 +308,8 @@ export function resolveConfig(config: StyleTweaksConfig = {}): ResolvedStyleTwea
     legacyStatsLine: config.legacyStatsLine ?? DEFAULT_LEGACY_STATS_LINE,
     pillsCacheHitDecimals: config.pillsCacheHitDecimals ?? DEFAULT_PILLS_CACHE_HIT_DECIMALS,
     turnSpeedMetrics: config.turnSpeedMetrics ?? DEFAULT_TURN_SPEED_METRICS,
+    rightbarInitialWidth: config.rightbarInitialWidth ?? DEFAULT_RIGHTBAR_INITIAL_WIDTH,
+    rightbarWidthPercent: resolveRightbarPercent(config.rightbarWidthPercent),
   }
 }
 
@@ -296,4 +333,12 @@ export function resolveThinkHeight(value: number | undefined): number {
     return Math.min(MAX_THINK_HEIGHT, Math.max(MIN_THINK_HEIGHT, Math.round(value)))
   }
   return DEFAULT_THINK_HEIGHT
+}
+
+/** Normalize a right-Sidebar width percentage. */
+export function resolveRightbarPercent(value: number | undefined): number {
+  if (typeof value === 'number') {
+    return Math.min(MAX_RIGHTBAR_WIDTH_PERCENT, Math.max(MIN_RIGHTBAR_WIDTH_PERCENT, Math.round(value)))
+  }
+  return DEFAULT_RIGHTBAR_WIDTH_PERCENT
 }
