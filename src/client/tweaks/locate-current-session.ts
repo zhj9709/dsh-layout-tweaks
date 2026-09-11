@@ -21,11 +21,12 @@
  * `project-running-indicator.ts` decorates project header rows.
  *
  * Stable anchors (CSS-Modules hashes rotate per build):
- *   • Native search button: localized `aria-label` resolved through the
- *     locale service (`workspace` ns, key `search.sessions.aria`), with a
- *     structural fallback on the `searchButton` class fragment.
- *   • Breadcrumb: same strategy (`conversation` ns, key
- *     `session.hierarchy`; fallback `crumbs` fragment).
+ *   • Native search button: the `searchButton` class fragment first, with
+ *     the localized `aria-label` (locale service, `workspace` ns, key
+ *     `search.sessions.aria`) only as a fallback for a build that renames
+ *     the fragment.
+ *   • Breadcrumb: the same order (`crumbs` fragment; label fallback from
+ *     `conversation` ns, key `session.hierarchy`).
  *   • Selected session row: `[role="treeitem"][aria-selected="true"]`
  *     (ARIA `aria-selected` is part of the WAI-ARIA tree pattern, DSH
  *     uses it to mark the active row.)
@@ -86,7 +87,13 @@ let tConversation: Translate | undefined
 /**
  * The localized aria-label DSH paints on the sidebar search button
  * (namespace `workspace`, key `search.sessions.aria`: zh `搜索会话`,
- * en `Search sessions`).
+ * en `Search sessions`). Read as the FALLBACK anchor only: the label
+ * matches while DSH keeps painting that key's value on that button, and a
+ * label is a value several buttons may share (the sidebar search, a
+ * picker's search), where the class fragment below belongs to this one
+ * button alone. DSH resolves a missing key to the key itself rather than
+ * to `undefined`, so a label that stops resolving degrades to a query
+ * that silently matches nothing instead of reporting anything.
  */
 function searchButtonLabel(): string | undefined {
   return tWorkspace?.('search.sessions.aria')
@@ -94,19 +101,57 @@ function searchButtonLabel(): string | undefined {
 
 /**
  * The localized aria-label of the breadcrumb nav that carries the current
- * session title (namespace `conversation`, key `session.hierarchy`).
+ * session title (namespace `conversation`, key `session.hierarchy`). Same
+ * fallback-only role as {@link searchButtonLabel}.
  */
 function breadcrumbLabel(): string | undefined {
   return tConversation?.('session.hierarchy')
 }
 
-/** Stable structural fallback for the sidebar search button. CSS-Modules
- * class names are `<hash>_<semantic>`; the semantic suffix survives builds,
- * so a substring match is build-durable where the full class is not. */
-const SEARCH_BUTTON_FALLBACK_SELECTOR = 'button[class*="searchButton"]'
+/** Primary anchor for the sidebar search button: the class fragment
+ * `searchButton` survives builds (CSS-Modules names are `<hash>_<semantic>`
+ * and only the hash rotates), so a substring match is build-durable where
+ * the full class is not — and unlike an aria-label it never depends on the
+ * active language. */
+const SEARCH_BUTTON_SELECTOR = 'button[class*="searchButton"]'
 
-/** Stable structural fallback for the breadcrumb nav (`css.crumbs`). */
-const BREADCRUMB_FALLBACK_SELECTOR = 'nav[class*="crumbs"] button[disabled]'
+/** Primary anchor for the breadcrumb nav (`css.crumbs`), same reasoning. */
+const BREADCRUMB_NAV_SELECTOR = 'nav[class*="crumbs"]'
+
+/** Every labelled button / nav, scanned by the localized fallback. */
+const LABELLED_BUTTON_SELECTOR = 'button[aria-label]'
+const LABELLED_NAV_SELECTOR = 'nav[aria-label]'
+
+/**
+ * Exact-`aria-label` lookup over a pre-filtered candidate set.
+ *
+ * Comparing the attribute directly beats interpolating the label into a
+ * selector (`button[aria-label="${label}"]`): a translation carrying a
+ * quote, a bracket or a backslash would break the selector, and the value
+ * would be spliced into a CSS query besides.
+ */
+function elementByAriaLabel<T extends Element>(candidates: string, label: string): T | null {
+  for (const el of document.querySelectorAll<T>(candidates)) {
+    if (el.getAttribute('aria-label') === label) return el
+  }
+  return null
+}
+
+/**
+ * Resolve one anchor: the structural selector first, the localized
+ * `aria-label` second. The fallback exists for a DSH build that renames the
+ * class fragment; it is deliberately second, so the ordinary path carries
+ * no translation dependency at all.
+ * @param structural - build-durable class-fragment selector.
+ * @param candidates - the labelled elements the fallback scans.
+ * @param label - the localized aria-label, or undefined without a locale service.
+ * @returns the anchor, or null when neither selector matches.
+ */
+function anchorElement(structural: string, candidates: string, label: string | undefined): HTMLElement | null {
+  const direct = document.querySelector<HTMLElement>(structural)
+  if (direct !== null) return direct
+  return label === undefined ? null : elementByAriaLabel<HTMLElement>(candidates, label)
+}
 
 /**
  * Inline SVG icon for the locate button.
@@ -241,18 +286,18 @@ export function injectLocateCurrentSessionStyles(): () => void {
 
 /**
  * Read the current session's title from the top breadcrumb. DSH renders
- * the session lineage chip as a nav whose aria-label comes from the
- * locale service (`conversation` ns, key `session.hierarchy`); the current
- * session's button is the only `button[disabled]` inside it (DSH disables
- * the current crumb so it cannot be re-entered as a navigation target).
- * Returns the trimmed title text, or null when no session is open.
+ * the session lineage chip as the `crumbs` nav; the current session's
+ * button is the only `button[disabled]` inside it (DSH disables the
+ * current crumb so it cannot be re-entered as a navigation target).
+ *
+ * The nav is resolved structurally first, through its localized
+ * `conversation:session.hierarchy` aria-label only as a fallback — see
+ * {@link anchorElement}.
+ * @returns the trimmed title text, or null when no session is open.
  */
 function readCurrentSessionTitle(): string | null {
-  const label = breadcrumbLabel()
-  const selector = label !== undefined
-    ? `nav[aria-label="${label}"] button[disabled]`
-    : BREADCRUMB_FALLBACK_SELECTOR
-  const btn = document.querySelector<HTMLButtonElement>(selector)
+  const nav = anchorElement(BREADCRUMB_NAV_SELECTOR, LABELLED_NAV_SELECTOR, breadcrumbLabel())
+  const btn = nav?.querySelector<HTMLButtonElement>('button[disabled]') ?? null
   const text = btn?.textContent?.trim()
   return text !== undefined && text.length > 0 ? text : null
 }
@@ -553,7 +598,7 @@ function attachTooltip(btn: HTMLButtonElement): void {
  *   - Setting `title` would summon the browser-native tooltip, which
  *     has a different visual style from the rest of the sidebar.
  *
- * The "has session" check uses the breadcrumb (`nav[aria-label="会话层级"]`
+ * The "has session" check uses the breadcrumb (`nav[class*="crumbs"]`
  * contains a `button[disabled]` with the session title) — NOT the
  * sidebar's `aria-selected` row. The breadcrumb survives sidebar rebuilds
  * AND survives the workspace being collapsed (the selected treeitem
@@ -584,9 +629,11 @@ function syncButtonEnabledState(btn: HTMLButtonElement): void {
  * already-mounted one. Returns the button element, or null if the search
  * button is absent (caller should retry on the next DOM mutation).
  *
- * Anchors resolve from the stable `button[aria-label="搜索会话"]` hook
- * (CSS-Modules hashes like `bhn1Oq_*` rotate per DSH build), then walk
- * up: search container → search slot. The button is inserted into the
+ * Anchors resolve from the structural `button[class*="searchButton"]`
+ * fragment (CSS-Modules hashes like `bhn1Oq_*` rotate per DSH build, the
+ * semantic suffix does not), then from the localized aria-label for a build
+ * that renames the fragment. From there we walk up: search container →
+ * search slot. The button is inserted into the
  * slot as a left sibling of the container — NOT inside the container,
  * which is a 28px round cell with `overflow: hidden` that would both
  * clip the button and break the header's even 4px icon spacing. CSS
@@ -599,15 +646,10 @@ function syncButtonEnabledState(btn: HTMLButtonElement): void {
  * of mutations into one re-sync.
  */
 function mountButton(refresh: boolean = false): HTMLButtonElement | null {
-  // Anchor: the localized aria-label first (evaluated per call, so a live
-  // locale switch re-resolves on the next observer tick); structural
-  // fallback when the locale service is unavailable.
-  const label = searchButtonLabel()
-  const searchBtn = document.querySelector<HTMLElement>(
-    label !== undefined
-      ? `button[aria-label="${label}"]`
-      : SEARCH_BUTTON_FALLBACK_SELECTOR,
-  )
+  // Anchor: the structural class fragment first (no translation in the
+  // path), the localized aria-label second — re-evaluated per call, so a
+  // live locale switch re-resolves the fallback on the next observer tick.
+  const searchBtn = anchorElement(SEARCH_BUTTON_SELECTOR, LABELLED_BUTTON_SELECTOR, searchButtonLabel())
   if (searchBtn === null) return null
   const searchContainer = searchBtn.parentElement
   const slot = searchContainer?.parentElement
@@ -637,8 +679,9 @@ export function setupLocateCurrentSession(ctx: ClientContext): () => void {
   // Bind the locale namespaces the anchors need. `bind` returns a t that
   // reads the active locale on every call, so language switches propagate
   // with no rebind — the next observer tick re-resolves the aria-label
-  // anchors through the same functions. Failures fall back to structural
-  // anchors, exactly like the store lookups below.
+  // fallback through the same functions. The structural anchors do not need
+  // this at all; without a locale service the fallback is simply skipped,
+  // exactly like the store lookups below.
   try {
     const locale = (ctx as unknown as { locale?: { bind(ns: string): Translate } }).locale
     if (locale !== undefined && typeof locale.bind === 'function') {
