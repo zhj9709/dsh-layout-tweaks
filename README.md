@@ -1,5 +1,7 @@
 # dsh-style-tweaks
 
+简体中文 | [English](README.en.md)
+
 > 依赖版本：deepseek-harness v0.1.5-rc.1
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）Web UI 插件：为 DSH 界面提供一套可选的样式调整——精确的对话列宽控制，以及侧边栏与设置面板的一系列小幅度修复。
@@ -58,20 +60,23 @@ style-tweaks:
 
 ```bash
 # 方式一：从 npm 安装（推荐，预构建产物）
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks
+dsh plugin --profile web add dsh-style-tweaks
 
 # 方式二：从 GitHub 仓库安装（源码，会运行自包含的 prepare 构建）
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-style-tweaks
+dsh plugin --profile web add github:zhj9709/dsh-style-tweaks
 ```
 
 `add` 后面的包说明会**原样转发给 pnpm**，因此可以指定版本——npm 包用 `@版本号`，GitHub 源码用 `#tag`：
 
 ```bash
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks@0.1.0                    # 锁定 npm 版本
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-style-tweaks#v0.1.0     # 锁定 git tag
+dsh plugin --profile web add dsh-style-tweaks@0.1.0                  # 锁定 npm 版本
+dsh plugin --profile web add github:zhj9709/dsh-style-tweaks#v0.1.0  # 锁定 git tag
 ```
 
 安装完成后**重启一次 `dsh web`**（bundle 插件在进程启动时扫描）。
+
+> 上面假定 `dsh` 已在 PATH 上。没有全局安装时，把每条命令开头的 `dsh` 换成
+> `npx -y @deepseek-ai/dsh` 即可（例如 `npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks`）。
 
 ## 开发
 
@@ -83,32 +88,178 @@ pnpm build          # tsc（服务端）+ tsc（客户端）+ 打包 lib/client.
 pnpm typecheck
 ```
 
-本地加载（覆盖层）或作为 bundle 安装：
+本地加载（覆盖层）或软链安装：
 
 ```bash
-npx -y @deepseek-ai/dsh web --patch ./cordis.patch.yml   # 开发覆盖层
-npx -y @deepseek-ai/dsh plugin --profile web add .        # 从本目录作为 bundle 安装
+dsh web --patch ./cordis.patch.yml      # 开发覆盖层
+dsh plugin --profile web add "link:./"  # 软链安装（本地开发，见下）
 ```
 
-### 热重载（免安装）
+### 本地开发（推荐）：`link:` 软链 + 热加载
 
-构建产物只有客户端插件（`lib/client.js`）需要被 DSH 运行时加载。每次修改代码后：
+开发时**不要把仓库打包成 `.tgz` 再装进 profile**，也不需要在每次构建后手动复制文件。用 pnpm 的
+`link:` 协议把 profile 里的 `node_modules/dsh-style-tweaks` 直接软链到本仓库，构建产物就落在被
+DSH 加载的那个路径上——改完代码不需要复制、不需要重新打包、不需要重装插件。
+
+下文用 `<profile>` 代指 profile 目录：
+
+| 系统 | profile 目录 |
+|---|---|
+| macOS / Linux | `~/.dsh/profiles/web` |
+| Windows | `%USERPROFILE%\.dsh\profiles\web` |
+
+**一次性安装**（在仓库根目录执行，`add` 后面的包说明会原样转发给 pnpm）：
+
+```bash
+dsh plugin --profile web add "link:./"
+```
+
+这一步会同时写入 profile 的 `dependencies` 与 `dsh.profile.bundles`，并让 pnpm 建好软链；
+`link:./` 最终被记成相对路径还是绝对路径取决于 CLI 实现，装完按下面的命令验证一下即可。
+
+> **建软链的前提**：Windows 需要**开发者模式**（设置 → 系统 → 开发者选项）或管理员权限，
+> 否则 pnpm 可能建不出符号链接（个别版本会退回 junction，功能上等效）；macOS / Linux 无此限制。
+
+> **只有当你曾手动禁用过这个插件时才需要这一步**：DSH 的树按「`dsh.profile.bundles` →
+> `cordis.patch.yml` → `--patch` 覆盖层」依次合成，patch 层最后应用，而 `dsh plugin add/remove`
+> 只维护 `dependencies` 与 `dsh.profile.bundles`、不会动这份手写文件。因此 patch 层里若留着
+> `disabled: true`，它会活过 remove → add，表现为「装上了、也构建了，但页面什么都不挂」。
+>
+> 要删的是 **profile 的那份** `<profile>/cordis.patch.yml`，**不是仓库根目录的同名文件**
+> （那份是本 bundle 自带的补丁，只有一条 `insert`，不含 `disabled`）。先确认有没有：
+
+```bash
+grep -n "style-tweaks" ~/.dsh/profiles/web/cordis.patch.yml                     # macOS / Linux
+```
+
+```powershell
+Select-String "$env:USERPROFILE\.dsh\profiles\web\cordis.patch.yml" -Pattern style-tweaks
+```
+
+> 只删这一条，其他条目的 disable 保留（那些是刻意的）。
+
+验证软链确实指向本仓库：
+
+**macOS / Linux（含 WSL、Git Bash）**
+
+```bash
+link=~/.dsh/profiles/web/node_modules/dsh-style-tweaks
+ls -ld "$link"                  # 期望 l 开头，且 -> 指向本仓库
+readlink "$link"                # 期望 = 本仓库根目录
+test -e "$link/src" && echo "src 可见，确实指到源码"
+```
+
+**Windows（PowerShell）**
+
+```powershell
+$link = "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-style-tweaks"
+(Get-Item $link).LinkType   # 期望 SymbolicLink（或 Junction）
+(Get-Item $link).Target     # 期望 = 本仓库根目录
+Test-Path "$link\src"       # 期望 True，证明确实指到源码
+```
+
+**每次改完代码的热加载流程**：
 
 1. **构建**：
+
    ```bash
    pnpm build
    ```
 
-2. **复制到 profile 目录**：
+   这一步不能省。仓库里**没有** `dev` / `watch` 脚本，没有任何东西会替你监听 `src/` 并重新编译；
+   改完源码必须手动构建，否则页面加载的仍是旧 bundle（表现为「改了没反应」）。软链下
+   `pnpm build` 会原地重写 `lib/client.js`——也就是 DSH 实际加载的那份文件，
+   **不再需要任何复制到 profile 的步骤**。
+
+2. **让页面重新加载 bundle**：
+
+   - **先硬刷新 GUI 页面**：Windows / Linux 为 `Ctrl+Shift+R`，macOS 为 `Cmd+Shift+R`
+     （或关掉标签页重开）。这是实测最常用、最可靠的一步，绝大多数情况刷新就够了。
+   - 只有刷新后依然不生效时，才重启 `dsh web` 进程（停掉再重新运行即可）。
+
+   README 旧版本写的「client-plugin HMR receiver 会检测变更并自动重载」在本地**实测经常不触发**：
+   本地 `dsh web` 通常从安装包启动，而不是从源码 checkout 跑 `dev:web`，页面会一直用已经取到的
+   那份 bundle。所以「改完刷新前毫无变化」是正常现象，不代表代码没生效。软链只保证**磁盘上的文件
+   是新的**，不保证**页面主动重新取**。
+
+**怎么确认新代码真的加载了**：
+
+- 页面里应当存在 `style[data-tweak-css="cst-*"]` 之类的注入样式，以及各调整项留在 `window` 上的
+  `__cst_*_cleanup__` 守卫（例如 `__cst_project_running_indicator_cleanup__`）。守卫是 `undefined`
+  说明该调整项没挂上。
+- 想知道页面拿到的是哪一版 bundle：从 `performance.getEntriesByType('resource')` 里取
+  `/plugins/??…dsh-style-tweaks…` 那条的完整 URL，再 `fetch(url, { cache: 'no-store' })`，
+  检查里面有没有你刚加进去的标识符。构建后页面**不会**主动重新请求这个 URL，这本身也是判断
+  「HMR 有没有生效」的直接手段。
+- 若刚好在 DSH 读取 bundle 时覆盖了 `lib/client.js`，可能出现一次「插件整个没挂载」的假象
+  （守卫和样式都不在）。刷新一次即可恢复，先别急着怀疑代码。
+
+**边界**：只有客户端产物 `lib/client.js` 能这样热加载。服务端代码
+（`src/index.ts` / `src/web.ts` / `src/config.ts` → `lib/index.js`）除了 `pnpm build`，
+还必须重启 `dsh web`；涉及 `apps/web` shell 或普通 package 的改动，还要重建对应的 Web 产物并刷新页面。
+
+**回到发布版本**（用包名，不含任何本地路径）：
+
+```bash
+dsh plugin --profile web remove dsh-style-tweaks
+dsh plugin --profile web add github:zhj9709/dsh-style-tweaks
+```
+
+### 备选：打包成 `.tgz` 安装（需要复制产物）
+
+不想让 profile 依赖本仓库路径、或想完整走一遍真实安装流程时，可以把仓库打包成 `.tgz` 再装进 profile。
+代价是 profile 里的 `node_modules/dsh-style-tweaks` 变成**一份真实拷贝**（不再指向源码），
+因此改完源码必须把构建产物复制过去——也就是 `link:` 方案帮你省掉的那一步。
+
+```bash
+pnpm build
+pnpm pack            # 产出 dsh-style-tweaks-<版本>.tgz（在 .gitignore 里，不要提交）
+dsh plugin --profile web add ./dsh-style-tweaks-0.1.2.tgz
+```
+
+装完**重启一次 `dsh web`**（bundle 插件在进程启动时扫描）。
+
+之后每次改代码：
+
+1. **构建**：
+
    ```bash
-   cp lib/client.js ~/.dsh/profiles/web/node_modules/dsh-style-tweaks/lib/client.js
+   pnpm build
    ```
 
-3. **DSH 的 client-plugin HMR receiver** 会检测文件变更并自动重新加载插件，无需重新安装。
+2. **把产物复制进 profile**（`link:` 方案下不需要这一步）。用「先删后拷」而不是直接覆盖：
 
-> 注意：有时 GUI 进程会缓存旧 bundle，表现为改动未生效。此时需要重启 `dsh web` 进程。
+   **macOS / Linux**
 
-只有客户端插件（`client.js`）支持热重载。修改 `apps/web` shell 或普通 package 后仍需重新构建 Web 产物并刷新页面。
+   ```bash
+   dest=~/.dsh/profiles/web/node_modules/dsh-style-tweaks/lib/client.js
+   rm -f "$dest" && cp lib/client.js "$dest"
+   ```
+
+   **Windows（PowerShell）**
+
+   ```powershell
+   $dest = "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-style-tweaks\lib\client.js"
+   Remove-Item $dest -Force
+   Copy-Item lib/client.js $dest
+   ```
+
+3. **硬刷新 GUI 页面**；依旧不生效时重启 `dsh web`。
+
+> **为什么不能直接 `cp -f` 覆盖**：pnpm 默认把 `node_modules` 里的文件链接到自己的内容寻址 store，
+> Linux / Windows 上用的是**硬链接**，原地覆盖会穿透写回 store，可能污染其他用到同一份文件的项目。
+> macOS 的 APFS 默认走 clonefile（写时复制），通常不受影响，但「先删后拷」在所有平台都安全。
+> GNU coreutils 下也可以写 `cp --remove-destination`，注意 **macOS 的 BSD `cp` 没有这个选项**。
+
+从 `link:` 切回 `.tgz` 要先 `remove` 再 `add`，因为 profile 里已有一条本地路径依赖：
+
+```bash
+dsh plugin --profile web remove dsh-style-tweaks
+dsh plugin --profile web add ./dsh-style-tweaks-0.1.2.tgz
+```
+
+两个方案的差别只有「产物是否自动落到位」这一条：都要 `pnpm build`，都要刷新页面。
+日常改代码用 `link:`，需要验证发布包本身时才用 `.tgz`。
 
 ## 工作原理
 

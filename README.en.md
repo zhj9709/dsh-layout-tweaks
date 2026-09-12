@@ -1,5 +1,7 @@
 # dsh-style-tweaks
 
+English | [简体中文](README.md)
+
 > Dependency version: deepseek-harness v0.1.5-rc.1
 
 A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) web plugin that bundles a precise conversation column-width control with a collection of opt-in style tweaks for DSH's UI — including small fixes for the sidebar and the settings panel.
@@ -58,21 +60,25 @@ Settings entry: **Settings → Style tweaks**.
 
 ```bash
 # from npm (recommended, prebuilt)
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks
+dsh plugin --profile web add dsh-style-tweaks
 
 # from GitHub (source; runs the self-contained prepare build)
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-style-tweaks
+dsh plugin --profile web add github:zhj9709/dsh-style-tweaks
 ```
 
 The package spec after `add` is forwarded to pnpm verbatim, so versions can be
 pinned — `@version` for the npm package, `#tag` for the GitHub source:
 
 ```bash
-npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks@0.1.0                    # pin the npm version
-npx -y @deepseek-ai/dsh plugin --profile web add github:zhj9709/dsh-style-tweaks#v0.1.0     # pin a git tag
+dsh plugin --profile web add dsh-style-tweaks@0.1.0                  # pin the npm version
+dsh plugin --profile web add github:zhj9709/dsh-style-tweaks#v0.1.0  # pin a git tag
 ```
 
 Restart DSH web once after installing (bundle plugins are scanned at process start).
+
+> The commands above assume `dsh` is on your PATH. Without a global install, replace the leading
+> `dsh` with `npx -y @deepseek-ai/dsh` — e.g.
+> `npx -y @deepseek-ai/dsh plugin --profile web add dsh-style-tweaks`.
 
 ## Development
 
@@ -84,32 +90,196 @@ pnpm build          # tsc (server) + tsc (client) + bundle lib/client.js
 pnpm typecheck
 ```
 
-Load against a running DSH with an overlay, or install as a bundle:
+Load against a running DSH with an overlay, or install as a symlink:
 
 ```bash
-npx -y @deepseek-ai/dsh web --patch ./cordis.patch.yml   # dev overlay
-npx -y @deepseek-ai/dsh plugin --profile web add .        # bundle install from this checkout
+dsh web --patch ./cordis.patch.yml      # dev overlay
+dsh plugin --profile web add "link:./"  # symlink install (local dev, see below)
 ```
 
-### Hot Reload (no reinstall needed)
+### Local development (recommended): `link:` symlink + hot reload
 
-Only the client plugin (`lib/client.js`) needs to be loaded by the DSH runtime. After each code change:
+While developing, **do not pack the repo into a `.tgz` and install that**, and do not copy files into
+the profile by hand after each build. Point the profile's `node_modules/dsh-style-tweaks` at this
+checkout with pnpm's `link:` protocol instead — build output then lands on the very path DSH loads,
+so a code change needs no copy, no repack, and no reinstall.
+
+`<profile>` below stands for the profile directory:
+
+| Platform | Profile directory |
+|---|---|
+| macOS / Linux | `~/.dsh/profiles/web` |
+| Windows | `%USERPROFILE%\.dsh\profiles\web` |
+
+**One-time install** (run from the repository root; the spec after `add` is forwarded to pnpm verbatim):
+
+```bash
+dsh plugin --profile web add "link:./"
+```
+
+This writes both the profile's `dependencies` and its `dsh.profile.bundles`, and has pnpm create the
+symlink; whether `link:./` ends up recorded as a relative or an absolute path depends on the CLI, so
+verify it after installing with the commands below.
+
+> **Creating the symlink requires**: on Windows, **Developer Mode** (Settings → System → For
+> developers) or an elevated shell, otherwise pnpm may fail to create a real symlink (some versions
+> fall back to a junction, which is functionally equivalent); macOS / Linux have no such restriction.
+
+> **Only needed if this plugin was ever disabled by hand**: DSH composes its tree as
+> `dsh.profile.bundles` → `cordis.patch.yml` → `--patch` overlays, so the patch layer is applied last,
+> while `dsh plugin add/remove` only maintains `dependencies` and `dsh.profile.bundles` and never
+> touches that hand-written file. A leftover `disabled: true` therefore survives a remove → add and
+> shows up as "installed, built — and nothing mounts in the page".
+>
+> The file to edit is the **profile's** `<profile>/cordis.patch.yml`, **not** the same-named file in
+> the repository root (that one is this bundle's own patch — a single `insert`, with no `disabled`).
+> Check first with:
+
+```bash
+grep -n "style-tweaks" ~/.dsh/profiles/web/cordis.patch.yml                     # macOS / Linux
+```
+
+```powershell
+Select-String "$env:USERPROFILE\.dsh\profiles\web\cordis.patch.yml" -Pattern style-tweaks
+```
+
+> Delete only that entry; keep the other disables (they are deliberate).
+
+Verify the symlink points at this repo:
+
+**macOS / Linux (including WSL and Git Bash)**
+
+```bash
+link=~/.dsh/profiles/web/node_modules/dsh-style-tweaks
+ls -ld "$link"                  # expect an l... entry whose -> points at this repo
+readlink "$link"                # expect the repository root
+test -e "$link/src" && echo "src is reachable"
+```
+
+**Windows (PowerShell)**
+
+```powershell
+$link = "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-style-tweaks"
+(Get-Item $link).LinkType   # expect SymbolicLink (or Junction)
+(Get-Item $link).Target     # expect the repository root
+Test-Path "$link\src"       # expect True, proving it really points at the sources
+```
+
+**The hot-reload loop after every code change:**
 
 1. **Build**:
+
    ```bash
    pnpm build
    ```
 
-2. **Copy to the profile directory**:
+   This step is not optional. The repo ships **no** `dev` / `watch` script — nothing watches `src/`
+   and recompiles for you, so a source change stays invisible until you build by hand (the symptom is
+   "I changed it and nothing happened"). Under the symlink, `pnpm build` rewrites `lib/client.js` in
+   place — the very file DSH loads — so **no copy into the profile is needed any more**.
+
+2. **Make the page load the bundle again**:
+
+   - **Hard-refresh the GUI page first** — `Ctrl+Shift+R` on Windows / Linux, `Cmd+Shift+R` on macOS
+     (or close the tab and reopen it). In practice this is the most common and most reliable step;
+     a refresh is enough in the vast majority of cases.
+   - Only if a refresh still does not take effect should you restart the `dsh web` process (stop it
+     and run it again).
+
+   The claim in older versions of this README — that "DSH's client-plugin HMR receiver detects the
+   change and reloads automatically" — **often does not fire on a local setup**: `dsh web` usually runs
+   from an installed package rather than a source checkout running `dev:web`, so the page keeps using
+   the bundle it already fetched. "No change until I refresh" is therefore normal and does not mean
+   your code failed. A symlink only guarantees the file **on disk** is new; it does not guarantee the
+   page **fetches it again**.
+
+**How to confirm the new code is really loaded**:
+
+- The page should carry injected styles such as `style[data-tweak-css="cst-*"]`, plus the
+  `__cst_*_cleanup__` guards each tweak leaves on `window` (e.g.
+  `__cst_project_running_indicator_cleanup__`). A guard that is `undefined` means that tweak never
+  mounted.
+- To see which build the page actually got: take the full URL of the
+  `/plugins/??…dsh-style-tweaks…` entry from `performance.getEntriesByType('resource')`, then
+  `fetch(url, { cache: 'no-store' })` and look for an identifier you just added. The page does
+  **not** re-request that URL after a build — which is itself a direct way to tell whether HMR fired.
+- Overwriting `lib/client.js` exactly while DSH is reading the bundle can produce one bogus
+  "the whole plugin is gone" pass (no guards, no styles). A single refresh restores it; don't blame
+  your code yet.
+
+**Boundaries**: only the client artifact `lib/client.js` hot-loads this way. Server code
+(`src/index.ts` / `src/web.ts` / `src/config.ts` → `lib/index.js`) needs a `dsh web` restart on top of
+`pnpm build`; changes to the `apps/web` shell or to a plain package also require rebuilding the
+corresponding web artifacts and refreshing the page.
+
+**Back to the published version** (package name, no local path):
+
+```bash
+dsh plugin --profile web remove dsh-style-tweaks
+dsh plugin --profile web add github:zhj9709/dsh-style-tweaks
+```
+
+### Alternative: install from a packed `.tgz` (artifact copy required)
+
+When you would rather not have the profile depend on this repo's path — or want to exercise a real
+install end to end — pack the repo into a `.tgz` and install that. The trade-off: the profile's
+`node_modules/dsh-style-tweaks` becomes a **real copy** (no longer pointing at the sources), so every
+source change has to be copied over — exactly the step the `link:` setup spares you.
+
+```bash
+pnpm build
+pnpm pack            # produces dsh-style-tweaks-<version>.tgz (gitignored; do not commit)
+dsh plugin --profile web add ./dsh-style-tweaks-0.1.2.tgz
+```
+
+**Restart `dsh web` once** after installing (bundle plugins are scanned at process start).
+
+Then, after each code change:
+
+1. **Build**:
+
    ```bash
-   cp lib/client.js ~/.dsh/profiles/web/node_modules/dsh-style-tweaks/lib/client.js
+   pnpm build
    ```
 
-3. **DSH's client-plugin HMR receiver** detects the change and automatically reloads the plugin — no reinstall required.
+2. **Copy the artifact into the profile** (not needed under `link:`). Delete first rather than
+   overwriting in place:
 
-> Note: Sometimes the GUI process caches the old bundle, making it appear that changes have no effect. In this case, restart the `dsh web` process.
+   **macOS / Linux**
 
-Only client plugins (`client.js`) support hot reloading. Changes to the `apps/web` shell or plain packages still require rebuilding web artifacts and a page refresh.
+   ```bash
+   dest=~/.dsh/profiles/web/node_modules/dsh-style-tweaks/lib/client.js
+   rm -f "$dest" && cp lib/client.js "$dest"
+   ```
+
+   **Windows (PowerShell)**
+
+   ```powershell
+   $dest = "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-style-tweaks\lib\client.js"
+   Remove-Item $dest -Force
+   Copy-Item lib/client.js $dest
+   ```
+
+3. **Hard-refresh the GUI page**; if that still does not take effect, restart `dsh web`.
+
+> **Why not simply overwrite with `cp -f`**: pnpm links files in `node_modules` to its
+> content-addressable store — by **hard link** on Linux and Windows — so an in-place overwrite writes
+> through to the store and can corrupt it for other projects sharing those files. macOS defaults to
+> APFS clonefile (copy-on-write) and is usually unaffected, but "delete then copy" is safe everywhere.
+> On GNU coreutils you can also use `cp --remove-destination`; note that **BSD `cp` on macOS has no
+> such option**.
+
+Switching from `link:` back to `.tgz` needs a `remove` first, since the profile already holds a local
+path dependency:
+
+```bash
+dsh plugin --profile web remove dsh-style-tweaks
+dsh plugin --profile web add ./dsh-style-tweaks-0.1.2.tgz
+```
+
+The only difference between the two setups is whether the artifact lands in place automatically: both
+need `pnpm build` and a page refresh. Use `link:` for day-to-day code changes, and `.tgz` when you want
+to verify the published package itself.
 
 ## How it works
 
