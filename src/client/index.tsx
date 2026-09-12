@@ -175,6 +175,7 @@ const en = {
   rightbarWidthPercent: 'Right sidebar width',
   rightbarWidthPercentHint: 'First-open width of the right sidebar as a percentage of the session frame, between 15 and 70. DSH clamps the result into its own range (at least 300 px, at most 70% of the frame), so a conversion below 300 px renders 300 px wide.',
   defaultAction: 'Default',
+  saving: 'Saving…',
   applied: 'Applied',
   unavailable: 'Settings unavailable.',
   loading: 'Loading…',
@@ -264,6 +265,7 @@ const zh: Record<LocaleKey, string> = {
   rightbarWidthPercent: '右侧边栏宽度',
   rightbarWidthPercentHint: '右侧边栏首次打开时占会话窗口宽度的百分比，取值 15–70。DSH 会把结果钳制到它自己的范围内（最小 300 px、最大窗口的 70%），因此换算结果不足 300 px 时会按 300 px 显示。',
   defaultAction: '默认',
+  saving: '保存中…',
   applied: '已应用',
   unavailable: '设置暂不可用。',
   loading: '加载中…',
@@ -358,7 +360,7 @@ function resolveValue(value: TweaksValue | undefined): ResolvedTweaks {
 }
 
 const BASE_CSS = `
-.cst-settings{display:grid;gap:8px;max-width:680px;padding:4px 2px 24px;color:var(--dsw-alias-label-primary)}
+.cst-settings{display:flex;flex-direction:column;gap:8px;max-width:680px;padding:4px 2px 24px;color:var(--dsw-alias-label-primary)}
 .cst-settings-header{display:flex;align-items:flex-start;gap:10px;padding:2px 2px 0}
 .cst-logo{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:9px;border:1px solid var(--dsw-alias-border-l1);background:linear-gradient(135deg,color-mix(in srgb,var(--dsw-alias-state-business-primary) 16%,transparent),transparent);font-size:15px;line-height:1}
 .cst-settings-header h2{font-size:16px;letter-spacing:-.01em;margin:0 0 2px}
@@ -389,11 +391,22 @@ const BASE_CSS = `
 .cst-seg button.cst-seg-active:hover:not(:disabled){color:var(--dsw-alias-state-business-primary)}
 .cst-seg button:disabled{opacity:.45;cursor:default}
 .cst-presets{display:inline-flex;flex-wrap:wrap;margin-top:2px}
-.cst-toast-wrap{display:flex;justify-content:flex-end;margin-top:8px;margin-right:18px}
-.cst-toast{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:500;line-height:1;padding:6px 11px;border-radius:999px;background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 12%,transparent);color:var(--dsw-alias-state-success-primary);animation:cst-toast-in .22s cubic-bezier(.2,.7,.3,1)}
-.cst-toast.error{color:var(--dsw-alias-state-error-primary);background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 12%,transparent)}
-.cst-toast-dot{flex:none;width:5px;height:5px;border-radius:50%;background:currentColor}
-@keyframes cst-toast-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+/* Save feedback. A zero-height sticky anchor keeps the pill pinned near the top
+ * of the settings content column (the .options scroll container) however far
+ * the form is scrolled, without occupying flow space — the pill overlays
+ * whatever sits at the top instead of pushing the form around on every save.
+ * margin-top cancels the anchor's own flex gap so showing/hiding it never
+ * nudges the form. (Flex column, not grid: a grid item's containing block is
+ * its own area, which leaves sticky no room to travel.) */
+.cst-status{position:sticky;top:8px;z-index:5;height:0;margin-top:-8px;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}
+.cst-status:empty{display:none}
+.cst-snack{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);box-shadow:0 4px 14px rgba(0,0,0,.16);color:var(--dsw-alias-label-secondary);font-size:11.5px;font-weight:500;line-height:1;animation:cst-snack-in .22s cubic-bezier(.2,.7,.3,1)}
+.cst-snack.cst-snack-applied{color:var(--dsw-alias-state-success-primary)}
+.cst-snack.cst-snack-unavailable{color:var(--dsw-alias-state-error-primary)}
+.cst-snack-dot{flex:none;width:5px;height:5px;border-radius:50%;background:currentColor}
+.cst-snack-saving .cst-snack-dot{animation:cst-snack-pulse 1s ease-in-out infinite}
+@keyframes cst-snack-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes cst-snack-pulse{0%,100%{opacity:1}50%{opacity:.25}}
 .cst-loading{padding:16px;border-radius:12px;background:var(--dsw-alias-bg-layer-2);font-size:12px;color:var(--dsw-alias-label-secondary)}
 .cst-alert{padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.5}
 .cst-alert.warning{background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 12%,transparent);color:var(--dsw-alias-state-warn-label)}
@@ -563,14 +576,35 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const resolved = resolveValue(state.value)
   const writable = state.writable
-  const [status, setStatus] = useState<LocaleKey | undefined>(undefined)
+  /** Save feedback for the top-of-panel pill; `seq` re-arms the auto-dismiss on every save. */
+  const [snack, setSnack] = useState<{ kind: 'saving' | 'applied' | 'unavailable'; seq: number } | undefined>(undefined)
+  const [savingShown, setSavingShown] = useState(false)
+  const latestSave = useRef(0)
 
   useEffect(() => { if (state.status === 'loading' && state.value === undefined) void controller.load() }, [controller, state.status, state.value])
+  // "Saving…" only appears once the request actually lags (the 502/503 retry
+  // window); a fast round-trip jumps straight to the terminal state.
   useEffect(() => {
-    if (status === undefined) return
-    const timer = setTimeout(() => { setStatus(undefined) }, 1800)
+    if (snack?.kind !== 'saving') { setSavingShown(false); return }
+    const timer = setTimeout(() => { setSavingShown(true) }, 350)
     return () => { clearTimeout(timer) }
-  }, [status])
+  }, [snack])
+  useEffect(() => {
+    if (snack === undefined || snack.kind === 'saving') return
+    const timer = setTimeout(() => { setSnack(undefined) }, 1800)
+    return () => { clearTimeout(timer) }
+  }, [snack])
+
+  const save = (field: string, value: unknown): void => {
+    const seq = ++latestSave.current
+    setSnack({ kind: 'saving', seq })
+    controller.set(field, value).then(() => {
+      // A newer save supersedes this one's outcome.
+      if (seq === latestSave.current) setSnack({ kind: 'applied', seq })
+    }).catch(() => {
+      if (seq === latestSave.current) setSnack({ kind: 'unavailable', seq })
+    })
+  }
 
   const [widthDraft, setWidthDraft] = useState<string>(String(resolved.dialogWidth))
   const [marginDraft, setMarginDraft] = useState<string>(String(resolved.sideMargin))
@@ -588,22 +622,22 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
     if (!Number.isFinite(parsed)) return
     const clamped = Math.min(MAX_DIALOG_WIDTH, Math.max(MIN_DIALOG_WIDTH, Math.round(parsed)))
     setWidthDraft(String(clamped))
-    void controller.set('dialogWidth', clamped).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('dialogWidth', clamped)
   }
 
   const stepDialogWidth = (delta: number): void => {
     const next = Math.min(MAX_DIALOG_WIDTH, Math.max(MIN_DIALOG_WIDTH, resolved.dialogWidth + delta))
     setWidthDraft(String(next))
-    void controller.set('dialogWidth', next).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('dialogWidth', next)
   }
 
   const applyWidthPreset = (width: number): void => {
     setWidthDraft(String(width))
-    void controller.set('dialogWidth', width).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('dialogWidth', width)
   }
 
   const setUsePluginWidth = (value: boolean): void => {
-    void controller.set('usePluginWidth', value).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('usePluginWidth', value)
   }
 
   const commitSideMargin = (raw: string): void => {
@@ -612,17 +646,17 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
     if (!Number.isFinite(parsed)) return
     const clamped = Math.max(MIN_SIDE_MARGIN, Math.round(parsed))
     setMarginDraft(String(clamped))
-    void controller.set('sideMargin', clamped).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('sideMargin', clamped)
   }
 
   const stepSideMargin = (delta: number): void => {
     const next = Math.max(MIN_SIDE_MARGIN, resolved.sideMargin + delta)
     setMarginDraft(String(next))
-    void controller.set('sideMargin', next).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('sideMargin', next)
   }
 
   const setThinkFixedHeight = (value: boolean): void => {
-    void controller.set('thinkFixedHeight', value).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('thinkFixedHeight', value)
   }
 
   const commitThinkHeight = (raw: string): void => {
@@ -631,17 +665,17 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
     if (!Number.isFinite(parsed)) return
     const clamped = Math.min(MAX_THINK_HEIGHT, Math.max(MIN_THINK_HEIGHT, Math.round(parsed)))
     setThinkHeightDraft(String(clamped))
-    void controller.set('thinkHeight', clamped).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('thinkHeight', clamped)
   }
 
   const stepThinkHeight = (delta: number): void => {
     const next = Math.min(MAX_THINK_HEIGHT, Math.max(MIN_THINK_HEIGHT, resolved.thinkHeight + delta))
     setThinkHeightDraft(String(next))
-    void controller.set('thinkHeight', next).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('thinkHeight', next)
   }
 
   const setRightbarInitialWidth = (value: boolean): void => {
-    void controller.set('rightbarInitialWidth', value).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('rightbarInitialWidth', value)
   }
 
   const commitRightbarWidth = (raw: string): void => {
@@ -650,22 +684,22 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
     if (!Number.isFinite(parsed)) return
     const clamped = Math.min(MAX_RIGHTBAR_WIDTH_PERCENT, Math.max(MIN_RIGHTBAR_WIDTH_PERCENT, Math.round(parsed)))
     setRightbarWidthDraft(String(clamped))
-    void controller.set('rightbarWidthPercent', clamped).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('rightbarWidthPercent', clamped)
   }
 
   const stepRightbarWidth = (delta: number): void => {
     const next = Math.min(MAX_RIGHTBAR_WIDTH_PERCENT, Math.max(MIN_RIGHTBAR_WIDTH_PERCENT, resolved.rightbarWidthPercent + delta))
     setRightbarWidthDraft(String(next))
-    void controller.set('rightbarWidthPercent', next).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('rightbarWidthPercent', next)
   }
 
   const applyRightbarWidthPreset = (percent: number): void => {
     setRightbarWidthDraft(String(percent))
-    void controller.set('rightbarWidthPercent', percent).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save('rightbarWidthPercent', percent)
   }
 
   const setTweak = (tweak: TweakDescriptor, value: boolean): void => {
-    void controller.set(tweak.settingKey, value).then(() => { setStatus('applied') }).catch(() => { setStatus('unavailable') })
+    save(tweak.settingKey, value)
   }
 
   if (state.status === 'loading' && state.value === undefined) {
@@ -684,6 +718,14 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
           <p>{t('settingsIntro')}</p>
         </div>
       </header>
+      <div className="cst-status">
+        {snack === undefined || (snack.kind === 'saving' && !savingShown) ? null : (
+          <div className={'cst-snack cst-snack-' + snack.kind} role="status" aria-live="polite">
+            <span className="cst-snack-dot" aria-hidden="true" />
+            <span>{t(snack.kind)}</span>
+          </div>
+        )}
+      </div>
       {!writable ? <div className="cst-alert warning">{t('readOnly')}</div> : null}
 
       <section className="cst-panel">
@@ -852,14 +894,6 @@ function SettingsSection({ controller, t }: SettingsSectionProps) {
           )
         })}
       </section>
-      {status === undefined ? null : (
-        <div className="cst-toast-wrap">
-          <div className={'cst-toast' + (status === 'unavailable' ? ' error' : '')} role="status" aria-live="polite">
-            <span className="cst-toast-dot" aria-hidden="true" />
-            <span>{t(status)}</span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
